@@ -1,0 +1,20 @@
+<!doctype html><html><body style="margin:0">
+<div id="bar" style="display:flex;gap:10px;padding:20px">
+  <div class="card" data-k="a" style="width:100px;height:80px;background:#ddd"></div>
+  <div class="card" data-k="b" style="width:100px;height:80px;background:#ccc"></div>
+</div>
+<script>
+window.REC=[];
+var bar=document.getElementById('bar');
+bar.addEventListener('pointerdown',function(e){
+  try{ bar.setPointerCapture(e.pointerId); }catch(err){}
+  window.REC.push('pd target='+e.target.className+' native='+e.target.className);
+});
+bar.addEventListener('click',function(e){
+  var card=e.target.closest('.card');
+  window.REC.push('click target='+e.target.id+'|'+e.target.className+' closest='+(card?card.dataset.k:'NULL'));
+});
+document.querySelectorAll('.card').forEach(function(c){
+  c.addEventListener('click',function(){ window.REC.push('card-own-click '+c.dataset.k); });
+});
+</script></body></html>
