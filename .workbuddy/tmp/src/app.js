@@ -1,5 +1,5 @@
 /* ============================================================
-   光匣 LUMEN v2 —— 内置示例照片 / 音效 / canvas 物理翻页引擎
+   咔哒书 KADA —— 内置示例照片 / 音效 / canvas 物理翻页引擎
    ============================================================ */
 
 /* ---------- 内置示例照片 ---------- */
@@ -20,7 +20,7 @@ async function loadEmbedded(replace){
     const it=PHOTO_DATA[i];
     const im=await imgFromURL(it.d);
     if(!im) continue;
-    const p=makePhoto(im,it.w,it.h,'LUMEN '+it.n);
+    const p=makePhoto(im,it.w,it.h,'KADA '+it.n);
     p.emb=it.n;
     pushPhoto(p);
     if(i%5===0){ busyOn('正在载入示例照片 <b>'+(i+1)+'/'+PHOTO_DATA.length+'</b>'); await tick(0); }
@@ -74,9 +74,9 @@ const Sound=(function(){
 /* ---------- 额外书页：环衬 / 扉页 ---------- */
 function renderEndpaper(W,H){
   const c=nc(W,H), x=c.getContext('2d'), bk=state.book;
-  x.fillStyle=bk.paper; x.fillRect(0,0,W,H);
-  /* 环衬：细密的斜纹纸。格子太密会糊成灰，这里把两种方向的纹路疏密拉开，
-     再叠一层四角渐暗，读起来才是「一张有图案的纸」。 */
+  /* 环衬先用材料打底（材质层），再叠它自己那层"印刷花纹" ——
+     环衬本来就是一张有图案的纸，花纹是印上去的，所以两层都要有。 */
+  paperGround(x,W,H,{side:'c'});
   x.save(); x.globalAlpha=.045; x.strokeStyle=bk.ink; x.lineWidth=Math.max(1,W*.0010);
   const s=W*.030;
   for(let i=-H;i<W+H;i+=s){
@@ -98,28 +98,27 @@ function renderEndpaper(W,H){
   x.globalAlpha=.115; x.strokeStyle=bk.ink; x.lineWidth=Math.max(1,W*.0016);
   rr(x,W*.13,H*.105,W*.74,H*.79,W*.005); x.stroke();
   x.restore();
-  /* 中央的「匣」印：环衬上唯一的实心元素，压住整页 */
+  /* 中央的「咔」印：环衬上唯一的实心元素，压住整页 */
   x.save();
   x.textAlign='center'; x.textBaseline='middle';
   const cs=W*.088;
   x.globalAlpha=.26; x.fillStyle=bk.ink;
   x.font='700 '+R(cs)+'px '+FONTS.serif;
-  x.fillText('匣',W/2,H*.452);
+  x.fillText('咔',W/2,H*.452);
   const ls=R(W*.0175);
   x.globalAlpha=.30; x.font=R(ls)+'px '+FONTS.mono;
-  tracked(x,'LUMEN',W/2,H*.530,ls*.62,'center');
+  tracked(x,'KADA',W/2,H*.530,ls*.62,'center');
   x.globalAlpha=.20; x.fillStyle=bk.ink;
   x.fillRect(W/2-W*.062,H*.565,W*.124,Math.max(1,W*.0011));
   const bs=R(W*.0158);
   x.globalAlpha=.28; x.font=R(bs)+'px '+FONTS.sans;
-  tracked(x,'光匣 · 照片书',W/2,H*.602,bs*.34,'center');
+  tracked(x,'咔哒书 · 照片书',W/2,H*.602,bs*.34,'center');
   x.restore();
   return c;
 }
 function renderTitlePage(W,H){
   const c=nc(W,H), x=c.getContext('2d'), bk=state.book;
-  x.fillStyle=bk.paper; x.fillRect(0,0,W,H);
-  grainOver(x,W,H,.05,'overlay');
+  paperGround(x,W,H,{side:'c'});
   const ir=hex2rgb(bk.ink||'#2b2620');
   const soft=function(a){ return 'rgba('+ir[0]+','+ir[1]+','+ir[2]+','+a+')'; };
   x.textAlign='center'; x.textBaseline='alphabetic';
@@ -130,9 +129,9 @@ function renderTitlePage(W,H){
   x.font=R(es)+'px '+FONTS.sans;
   tracked(x,'A COLLECTION OF MOMENTS',W/2,H*.185,es*.30,'center');
   x.globalAlpha=1;
-  const ts=fitFont(x,bk.title||'光匣',W*.76,FONTS.serif,H*.115,H*.046,'700');
+  const ts=fitFont(x,bk.title||BRAND.name,W*.76,FONTS.serif,H*.115,H*.046,'700');
   x.font='700 '+R(ts)+'px '+FONTS.serif;
-  tracked(x,bk.title||'光匣',W/2,H*.285,ts*.08,'center');
+  tracked(x,bk.title||BRAND.name,W/2,H*.285,ts*.08,'center');
   x.save();
   x.globalAlpha=.28; x.fillStyle=soft(1);
   x.fillRect(W/2-W*.062,H*.328,W*.124,Math.max(1,W*.0013));
@@ -154,6 +153,7 @@ function renderTitlePage(W,H){
     x.fillStyle='#fff'; x.fillRect(wx-P,wy-P,ww+P*2,wh+P*2);
     x.restore();
     x.drawImage(src,wx,wy,ww,wh);
+    plateSheen(x,wx,wy,ww,wh);
     x.save(); x.globalAlpha=.13; x.strokeStyle='#000'; x.lineWidth=Math.max(1,W*.0011);
     x.strokeRect(wx+.5,wy+.5,ww-1,wh-1); x.restore();
   }
@@ -546,7 +546,14 @@ BookView.prototype.drawFold=function(ctx){
   if(a<.02) return;
   const pw=this.pw, ph=this.ph, top=this.top;
   const right=this.spread?(this.cornerSide!=='l'):true;
-  const px=right?this.spineX+pw:this.spineX;
+  /* px = 那一角所在的**书口边**（不是书沟）。
+     ⚠ `spineX` 在两种模式下含义不同：跨页时它是**书沟**（左右页分别在 ±pw 两侧），
+     单页时它是**这一页自己的左边**（off = -pw/2）。
+     左页折角要的是 `spineX - pw`（左页的书口边）—— 这里原本漏了 `- pw`，
+     于是悬停左页左下角时，折角被画到书沟上，看着就像"右页的内下角凭空翘起一角"。
+     （单页模式走不到 `- pw` 这一支：那边的悬停判定只够得到右侧书口，
+     见 pointermove 里的 `d` 计算，所以这里不必再按模式分支。） */
+  const px=right?this.spineX+pw:this.spineX-pw;
   const py=top+ph;
   const dx=right?-1:1;
   const f=pw*.118*a;
@@ -1106,7 +1113,8 @@ function renderPreview(){
       '<p>整条流程是：<b>导入照片 → 给每张照片挑模版 → 勾选要入册的照片 → 生成成片</b>。<br>'+
       '现在还没有素材，选一种开始方式：</p>'+
       '<div class="empty-acts">'+
-        '<button class="btn primary" id="emptyDemo" type="button">载入 28 张示例照片</button>'+
+        '<button class="btn primary" id="emptyAuto" type="button">载入示例照片并一键成书</button>'+
+        '<button class="btn" id="emptyDemo" type="button">载入 28 张示例照片</button>'+
         '<button class="btn" id="emptyImport" type="button">导入我的照片</button>'+
       '</div>'+
       '<p class="fine">也可以直接把图片拖进来，或在页面里按 Ctrl+V 粘贴。</p></div>';
@@ -1300,7 +1308,7 @@ function scheduleBook(animateIntro){
     if(!state.generated.length) return;
     const r=buildBookPages();
     BV.setPages(r.pages,r.ratio,!!state.book.spread,true);
-    $('#readerTitle').textContent=(state.book.title||'光匣')+' · 沉浸阅读';
+    $('#readerTitle').textContent=(state.book.title||BRAND.name)+' · 沉浸阅读';
     if(animateIntro) BV.introOpen();
   },40);
 }
@@ -1315,7 +1323,7 @@ function setStep(n){
 function openReader(){
   if(!state.generated.length){ toast('请先「生成成片」'); return; }
   const r=$('#reader');
-  $('#readerTitle').textContent=(state.book.title||'光匣')+' · 沉浸阅读';
+  $('#readerTitle').textContent=(state.book.title||BRAND.name)+' · 沉浸阅读';
   r.appendChild(BV.el);
   BV.fullBtn.style.display='none';
   r.classList.add('on');
@@ -1381,7 +1389,40 @@ async function generate(){
   genBusy=false; btn.disabled=false; syncGenBtn();
   toast('已生成 '+out.length+' 张成片 · 用时 '+R(performance.now()-t0)+' ms');
   if(state.step!==2){ BV._intro=false; setStep(2); scheduleBook(true); }
-  else { renderPanel(); renderDock(); scheduleBook(false); }
+  /* 已经停在第 2 步时要走 renderStage：generate 之前如果这里没有成片，
+     renderBookStage 是把书本元素摘掉的（显示空状态），
+     只调 scheduleBook 的话书会被"生成"出来却仍然不挂在舞台上。 */
+  else { renderStage(); renderPanel(); renderDock(); scheduleBook(false); }
+}
+
+/* ---------- 一键氛围成书 / 换一版 ----------
+   放在 app.js 而不是 core.js：它要串起「改状态 → 重渲染 → 生成」，
+   而 generate() 是带 await 的（要出 28 张成片）。核心层只管"该怎么分配"，
+   UI 层的刷新顺序由这里负责。 */
+async function doAuto(roll){
+  if(genBusy){ toast('正在出片，稍等一下'); return; }
+  if(!state.photos.length){ toast('先导入一些照片'); return; }
+  const r=roll?autoRoll():autoBook(state.skin);
+  if(!r.ok){ toast(r.msg||'还不能成书'); return; }
+  /* autoBook 可能改过勾选（一张都没勾时会把全部做进去），
+     所以缩略图 / 面板 / 选片条都要先刷一遍，再让 generate 按新状态出片。 */
+  renderRail(); renderPanel(); renderDock(); schedulePreview();
+  PERSIST.save();
+  await generate();
+  renderPanel();
+  /* 提示要把"换了什么"说清楚 —— 「换一版」之所以让人觉得没用，
+     一半原因是它换完之后用户不知道哪里变了。 */
+  toast(roll
+    ? ('换了一版：材料 '+r.from.matLabel+' → '+r.matName+' · 版式 '+r.layoutName+' · 模版顺序与封面也换了')
+    : ('一键成书完成：'+r.count+' 张 · 「'+skinCfg().name+'」+「'+matName(state.book.mat)+'」'+
+       (r.layout?(' · '+layoutLabel(r.layout)):'')));
+}
+/* 空状态专用的"从零到一本书"路径：先载入示例照片，再一键成书。
+   两步并成一次点击 —— 首屏最贵的成本是"我还看不到任何东西"。 */
+async function emptyAuto(){
+  await loadEmbedded(true);
+  if(!state.photos.length) return;
+  await doAuto(false);
 }
 
 /* ============================================================
@@ -1395,6 +1436,57 @@ function onChange(path){
   PERSIST.save();
 }
 $('#panel').addEventListener('click',function(e){
+  const skin=e.target.closest('.skin[data-skin]');
+  if(skin){
+    const id=skin.dataset.skin;
+    if(id===state.skin){ toast('已经是「'+skinCfg().name+'」了'); return; }
+    applySkin(id);
+    /* 皮肤改的是 opts（印片）与 book（书页/书封）两处，所以三样都要刷：
+       面板、选片条预览、舞台上的书。 */
+    renderPanel(); renderDock(); schedulePreview(); scheduleBook(false);
+    PERSIST.save();
+    toast('氛围已切换到「'+skinCfg().name+'」'+(state.generated.length?' · 成片需重出一次':''));
+    return;
+  }
+  /* 材质：只重排书页（材料是"装帧"，不烧进成片），所以不需要重新生成，
+     换完立刻能在书里看到。这是"氛围"里最能被感觉到的一层。 */
+  const mat=e.target.closest('.mat[data-mat]');
+  if(mat){
+    const k=mat.dataset.mat;
+    if(k===state.book.mat){ toast('已经是「'+matName(k)+'」了'); return; }
+    const was=matName(state.book.mat);
+    state.book.mat=k;
+    renderPanel(); scheduleBook(false);
+    PERSIST.save();
+    toast('材料换成了「'+matName(k)+'」（'+was+' → '+matName(k)+'）');
+    return;
+  }
+  const mood=e.target.closest('.chip[data-mood]');
+  if(mood){
+    state._noteMood=mood.dataset.mood;
+    renderPanel();
+    return;
+  }
+  const note=e.target.closest('[data-note]');
+  if(note){
+    const c=noteCur();
+    if(!c){ toast('先在左边勾选要入册的照片'); return; }
+    const p=c.p, t=note.dataset.note;
+    if(p.note===t){ p.note=''; toast('已清掉「'+p.name+'」的文案'); }
+    else {
+      p.note=t; p.mood=state._noteMood||'heal';
+      state._noteLast=t;
+      /* 挑完自动跳下一张：一张一张过是「记录型」用户的真实节奏，
+         少一次点击在 28 张的规模上就是少 28 次。 */
+      const list=noteList();
+      if(c.i+1<list.length) state._noteIdx=c.i+1;
+      toast('「'+p.name+'」→「'+resolveTokens(t,p)+'」');
+    }
+    /* 文案只影响书页图注，不烧进成片 —— 所以不用重新生成，重排书页就够。
+       这是刻意的：如果每改一个字都要重出 28 张成片，没人会愿意写文案。 */
+    renderPanel(); scheduleBook(false); PERSIST.save();
+    return;
+  }
   const seg=e.target.closest('.seg button');
   if(seg){
     const wrap=seg.parentElement;
@@ -1422,6 +1514,20 @@ $('#panel').addEventListener('click',function(e){
     renderPanel(); schedulePreview(); PERSIST.save();
     toast('已套用「'+PRESETS[state.preset].label+'」调色'); return;
   }
+  /* 发布尺寸：改的是成片本身的画幅，所以必须重出成片才算数 ——
+     面板上那条「成片已过期」提示会自己亮起来，不用再单独提示。 */
+  const exp=e.target.closest('.chip[data-export]');
+  if(exp){
+    const p=exportPresetOf(exp.dataset.export);
+    if(!p){ toast('这个尺寸不认识'); return; }
+    state.spec.ratio=p.ratio; state.spec.longEdge=p.longEdge;
+    renderPanel();
+    if(state.generated.length){ scheduleBook(false); schedulePreview(); }
+    PERSIST.save();
+    toast('发布尺寸 → '+p.label+' '+p.px+
+      (state.generated.length?' · 点「按当前设置重新生成」出片':''));
+    return;
+  }
   const id=e.target.id;
   if(id==='resetAdj'){
     Object.keys(PRESETS.original.v).forEach(function(k){ state.adj[k]=PRESETS.original.v[k]; });
@@ -1429,6 +1535,32 @@ $('#panel').addEventListener('click',function(e){
   } else if(id==='resetOpts'){
     Object.keys(DEFAULT_OPTS).forEach(function(k){ state.opts[k]=DEFAULT_OPTS[k]; });
     renderPanel(); schedulePreview(); PERSIST.save(); toast('模版文字已恢复默认');
+  } else if(id==='skinColors'){
+    /* 只清用户手改过的纸色/墨色，不重置模版文字 —— 用户点这个按钮的诉求是
+       「回到氛围配色」，不是「把我的题字也删了」。 */
+    state.opts.paper=''; state.opts.ink='';
+    state.opts.accent=skinCfg().accent;
+    state.opts.accent2=skinCfg().accent2||'';
+    renderPanel(); schedulePreview(); PERSIST.save();
+    toast('已回到「'+skinCfg().name+'」的配色');
+  } else if(id==='notePrev'||id==='noteNext'){
+    const list=noteList();
+    if(!list.length) return;
+    const d=(id==='noteNext')?1:-1;
+    state._noteIdx=(clamp(state._noteIdx||0,0,list.length-1)+d+list.length)%list.length;
+    renderPanel();
+  } else if(id==='noteAll'){
+    const t=noteForAll();
+    if(!t){ toast('先挑一句文案'); return; }
+    let n=0;
+    state.photos.forEach(function(q){ if(q.picked){ q.note=t; q.mood=state._noteMood||'heal'; n++; } });
+    renderPanel(); scheduleBook(false); PERSIST.save();
+    toast('已把这句套给 '+n+' 张入册照片');
+  } else if(id==='noteClear'){
+    state.photos.forEach(function(q){ q.note=''; q.mood=''; });
+    state._noteIdx=0; state._noteLast='';
+    renderPanel(); scheduleBook(false); PERSIST.save();
+    toast('已清空全部文案');
   } else if(id==='clearPrefs'){
     PERSIST.clear();
     state.photos.forEach(function(p){ p.tpl=state.tpl; p.picked=true; });
@@ -1436,6 +1568,8 @@ $('#panel').addEventListener('click',function(e){
     toast('已清除本机保存的偏好与模版分配');
   } else if(id==='genBtn2'){ generate(); }
   else if(id==='genBtn3'){ generate(); }
+  else if(id==='autoBook'){ doAuto(false); }
+  else if(id==='autoRoll'){ doAuto(true); }
   else if(id==='coverNext'){
     const rank=coverRank();
     if(rank.length<2){ toast('至少两张入册照片才能换封面'); return; }
@@ -1452,6 +1586,15 @@ $('#panel').addEventListener('click',function(e){
 });
 $('#panel').addEventListener('input',function(e){
   const el=e.target, path=el.dataset.k;
+  /* 手写文案：这里刻意【不】重渲染面板 —— 一重渲染输入框就失焦，
+     用户打一个字光标就飞走。scheduleBook 自带 40ms 去抖，连续输入不会被
+     每一帧都拿去做一次 28 页重排。 */
+  if(el.dataset.noteInput){
+    const c=noteCur();
+    if(c){ c.p.note=el.value; if(!c.p.mood) c.p.mood=state._noteMood||'heal';
+      scheduleBook(false); PERSIST.save(); }
+    return;
+  }
   if(!path) return;
   if(el.dataset.bool){ setPath(path,el.checked); if(path.indexOf('book.')===0) scheduleBook(false); return; }
   setPath(path,el.value);
@@ -1514,6 +1657,7 @@ $('#tplApplyAll').addEventListener('click',function(){
 /* 首屏空状态的引导按钮（内容是动态注入的，所以用事件委托） */
 $('#stageBody').addEventListener('click',function(e){
   if(e.target.closest('#emptyDemo')){ loadEmbedded(true); }
+  else if(e.target.closest('#emptyAuto')){ emptyAuto(); }
   else if(e.target.closest('#emptyImport')){ $('#fileInput').click(); }
 });
 function dockHud(txt){
@@ -1745,6 +1889,9 @@ $('#soundBtn').addEventListener('click',function(){
 $('#themeBtn').addEventListener('click',function(){
   const cur=document.documentElement.getAttribute('data-theme');
   document.documentElement.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  /* 亮/暗主题下氛围强调色是两档色值（深色上用亮一档，浅色上用深一档），
+     所以切主题要重刷一次皮肤外观，否则粉底 + 浅粉字会糊在一起。 */
+  paintSkinChrome(skinCfg());
   PERSIST.save();
 });
 ['dragenter','dragover'].forEach(function(ev){
@@ -1792,6 +1939,10 @@ const savedPrefs=PERSIST.restore();
 if(savedPrefs&&savedPrefs.theme){
   document.documentElement.setAttribute('data-theme',savedPrefs.theme);
 }
+/* restore() 里已经贴过一次皮肤外观，但那时主题还是 HTML 上的默认值。
+   主题确定之后必须重贴一次 —— 否则「上次用的是浅色主题 + 蜜桃氛围」，
+   这次会拿到深色档的强调色，浅底上偏亮、对比不足。 */
+paintSkinChrome(skinCfg());
 renderRail();
 renderPanel();
 renderDock();
@@ -1804,7 +1955,7 @@ window.addEventListener('unhandledrejection',function(e){
   const btn=$('#genBtn'); if(btn){ btn.disabled=false; syncGenBtn(); }
   toast('出错了：'+m);
 });
-window.LUMEN={state:state,BV:BV,generate:generate,buildBookPages:buildBookPages,
+window.KADA=window.LUMEN={state:state,BV:BV,generate:generate,buildBookPages:buildBookPages,
   loadEmbedded:loadEmbedded,BookView:BookView,Sound:Sound,
   PERSIST:PERSIST,selPhoto:selPhoto,assignTpl:assignTpl,railPickAll:railPickAll,
   syncGenBtn:syncGenBtn,setStep:setStep,renderRail:renderRail,renderPanel:renderPanel,
@@ -1814,4 +1965,19 @@ window.LUMEN={state:state,BV:BV,generate:generate,buildBookPages:buildBookPages,
   coverScore:coverScore,renderContent:renderContent,folio:folio,tracked:tracked,
   plateOf:plateOf,artMode:artMode,optsFor:optsFor,resolveTokens:resolveTokens,
   ordinalOf:ordOf,plateHasText:plateHasText,capWillDraw:capWillDraw,DEFAULT_OPTS:DEFAULT_OPTS,
-  bookStale:bookStale,bookSig:bookSig};
+  bookStale:bookStale,bookSig:bookSig,
+  SKINS:SKINS,SKIN_ORDER:SKIN_ORDER,skinOf:skinOf,skinCfg:skinCfg,applySkin:applySkin,
+  paintSkinChrome:paintSkinChrome,
+  MOODS:MOODS,NOTES:NOTES,moodLabel:moodLabel,fmtDate:fmtDate,
+  noteList:noteList,noteCur:noteCur,noteForAll:noteForAll,captionOf:captionOf,trackedW:trackedW,
+  fontOK:fontOK,capCJK:capCJK,handCJK:handCJK,CAP_CJK:CAP_CJK,capLabel:capLabel,
+  photoOfIm:photoOfIm,
+  EXPORT_PRESETS:EXPORT_PRESETS,exportPresetOf:exportPresetOf,exportPresetNow:exportPresetNow,
+  pageAspect:pageAspect,exportSheet:exportSheet,shareSheet:shareSheet,
+  autoBook:autoBook,autoRoll:autoRoll,autoHTML:autoHTML,autoSeq:autoSeq,layoutLabel:layoutLabel,
+  LAYOUTS:LAYOUTS,doAuto:doAuto,
+  MATSETS:MATSETS,MAT_ORDER:MAT_ORDER,matSpec:matSpec,matChoices:matChoices,matName:matName,
+  matTile:matTile,matHTML:matHTML,paintMats:paintMats,shade:shade,
+  paperGround:paperGround,boardGround:boardGround,pressTreat:pressTreat,plateSheen:plateSheen,
+  renderCover:renderCover,renderContent:renderContent,renderEndpaper:renderEndpaper,
+  renderTitlePage:renderTitlePage,renderBack:renderBack,renderBlank:renderBlank};

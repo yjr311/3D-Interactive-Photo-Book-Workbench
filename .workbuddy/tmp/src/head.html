@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>光匣 LUMEN · 3D 互动照片书工作台</title>
+<title>咔哒书 KADA · 3D 互动照片书工作台</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA0OCA0OCc+PHBhdGggZmlsbD0nI2YwYTYzYycgZmlsbC1ydWxlPSdldmVub2RkJyBkPSdNMTYuMSAzLjIgaDE1LjggYTEyLjkgMTIuOSAwIDAgMSAxMi45IDEyLjkgdjE1LjggYTEyLjkgMTIuOSAwIDAgMSAtMTIuOSAxMi45IGgtMTUuOCBhMTIuOSAxMi45IDAgMCAxIC0xMi45IC0xMi45IHYtMTUuOCBhMTIuOSAxMi45IDAgMCAxIDEyLjkgLTEyLjkgWk0yNS4xOSAzMy45OUMyOC42NCAzMS4zOCAzNC44NCAyOS4yNSAzOS40OCAyOS4yNUM0MC43MiAyNS44NiA0MC43MiAxNy4wNCAzOS40OCAxMy42NUMzNC44NCAxMy42NSAyOC42NCAxNi4wMiAyNS4xOSAxNi4wMlpNMjIuODEgMzMuOTlDMTkuMzYgMzEuMzggMTMuMTYgMjkuMjUgOC41MiAyOS4yNUM3LjI4IDI1Ljg2IDcuMjggMTcuMDQgOC41MiAxMy42NUMxMy4xNiAxMy42NSAxOS4zNiAxNi4wMiAyMi44MSAxNi4wMlonLz48L3N2Zz4=">
 <style>
 :root{
   --bg:#08090c; --bg2:#0e1015; --stage:#050608;
@@ -78,11 +79,8 @@ h1,h2,h3,p{margin:0}
   background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.22;
 }
 .brand{display:flex;align-items:center;gap:9px;user-select:none;flex:none}
-.brand .logo{
-  width:29px;height:29px;border-radius:9px;display:grid;place-items:center;
-  background:linear-gradient(145deg,var(--accent),#c8791f); color:var(--accent-ink);
-  font-size:15px;font-weight:700; box-shadow:0 6px 18px rgba(240,166,60,.3);
-}
+.brand .logo{width:29px;height:29px;display:block;flex:none;color:var(--accent);
+  filter:drop-shadow(0 5px 15px var(--glow));}
 .brand b{font-size:14.5px;letter-spacing:.06em;font-weight:600}
 .brand i{display:block;font-style:normal;font-size:9px;letter-spacing:.34em;color:var(--faint);margin-top:-3px}
 .steps{display:flex;gap:2px;margin-left:6px;flex:1;min-width:0}
@@ -340,6 +338,80 @@ input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--
 .chip:hover{border-color:var(--line2);color:var(--text)}
 .chip.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,transparent)}
 .chip i{width:13px;height:13px;border-radius:50%;display:block}
+/* 氛围卡片：纸色 + 强调色两块色块。颜色是这套皮肤最直接的辨识物，
+   文字只是补充 —— 所以色块比字大。 */
+.skins{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.skin{
+  display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--r2);
+  border:1px solid var(--line);background:var(--panel);text-align:left;min-width:0;
+}
+.skin:hover{border-color:var(--line2)}
+.skin.on{border-color:color-mix(in srgb,var(--accent) 60%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.skin .sw{
+  width:26px;height:26px;border-radius:8px;flex:none;overflow:hidden;position:relative;
+  border:1px solid var(--line2);
+}
+.skin .sw i{position:absolute;inset:0;display:block}
+.skin .sw i+i{left:60%}
+.skin .tx{min-width:0;display:flex;flex-direction:column;gap:1px}
+.skin .tx b{font-size:11.5px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skin .tx s{font-size:10px;color:var(--faint);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skin.on .tx b{color:var(--accent)}
+/* 材质小样卡：三列。里面那 92×30 的小画布是**真画出来的材料**（同一套 tile + 同一套光照），
+   所以它同时是"选项"和"预览"。文字只留材料名，说明放 title 里 —— 90px 宽的卡放不下说明。 */
+.mats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mat{
+  display:flex;flex-direction:column;gap:5px;padding:5px;border-radius:var(--r3);
+  border:1px solid var(--line);background:var(--panel);min-width:0;
+}
+.mat:hover{border-color:var(--line2)}
+.mat.on{border-color:color-mix(in srgb,var(--accent) 62%,transparent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.mat .msw{width:100%;height:30px;display:block;border-radius:3px;border:1px solid var(--line);background:var(--panel2)}
+.mat .mtx{min-width:0}
+.mat .mtx b{display:block;font-size:10.5px;font-weight:500;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mat.on .mtx b{color:var(--accent)}
+/* 一键成书卡片：面板里唯一的"整块"入口，所以给它一点边界感 ——
+   用强调色的极浅底 + 左侧色条，让人一眼看到"从这里开始"，
+   但不做成实心按钮（实心会和下面的 primary 按钮抢） */
+.auto{
+  padding:10px 11px 11px;border-radius:var(--r2);
+  border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));
+  background:color-mix(in srgb,var(--accent) 7%,transparent);
+  border-left:3px solid var(--accent);
+}
+.auto .auto-hd{display:flex;flex-direction:column;gap:2px;margin-bottom:7px}
+.auto .auto-hd b{font-size:12px;font-weight:600;color:var(--text)}
+/* 推荐序列不截断：它就是这个卡片对用户的承诺（"会发生什么"），
+   在 329px 的窄面板里宁可换成两行，也不要变成「宝丽来 → 杂志 → 胶…」 */
+.auto .auto-hd s{
+  font-size:10px;color:var(--faint);text-decoration:none;line-height:1.55;
+  overflow-wrap:anywhere;
+}
+/* 说明段落统一由 .sec-body p.note 管（换行 / 无框 / 字号 / 下间距），
+   卡片里不再单独覆盖 —— 覆盖写在这里反而会被后面的规则按顺序吃掉 */
+.auto .fine{margin:7px 0 0;font-size:11px;line-height:1.7;color:var(--faint)}
+.auto .row{display:flex;gap:6px;margin:0}
+.auto .row .btn{flex:1;margin:0}
+/* 文案候选：整句可读，所以不做成 chip，而是窄按钮。
+   两列而不是一列 —— 一列会把按钮拉得很宽，读起来像表单而不是「挑句子」。
+   ⚠ 选择器必须带 .notes 前缀：光写 .note 会连说明段落 <p class="note"> 一起命中，
+     于是每一段说明都被 nowrap + overflow:hidden 截成一行（面板上 14 处说明全被吃掉）。 */
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.notes .note{
+  padding:6px 8px;border-radius:var(--r3);border:1px solid var(--line);
+  background:var(--panel);font-size:11.5px;color:var(--muted);text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.notes .note:hover{border-color:var(--line2);color:var(--text)}
+.notes .note.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,transparent)}
+/* 说明段落：显式声明换行与去框，不依赖别处不写 nowrap —— 上一版正是栽在这里 */
+.sec-body p.note{
+  font-size:11.5px;line-height:1.8;color:var(--muted);margin:0 0 9px;
+  white-space:normal;overflow:visible;overflow-wrap:anywhere;
+  border:0;padding:0;background:none;
+}
+.panel-scroll .row{display:flex;gap:5px}
+.panel-scroll .row>*{flex:1;min-width:0}
 input[type=color]{
   width:100%;height:30px;padding:2px;border-radius:var(--r3);border:1px solid var(--line);
   background:var(--panel);cursor:pointer;
@@ -595,8 +667,8 @@ input[type=color]{
 <div class="app">
   <header class="top">
     <div class="brand">
-      <div class="logo">匣</div>
-      <div><b>光匣</b><i>LUMEN</i></div>
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M16.1 3.2 h15.8 a12.9 12.9 0 0 1 12.9 12.9 v15.8 a12.9 12.9 0 0 1 -12.9 12.9 h-15.8 a12.9 12.9 0 0 1 -12.9 -12.9 v-15.8 a12.9 12.9 0 0 1 12.9 -12.9 ZM25.19 33.99C28.64 31.38 34.84 29.25 39.48 29.25C40.72 25.86 40.72 17.04 39.48 13.65C34.84 13.65 28.64 16.02 25.19 16.02ZM22.81 33.99C19.36 31.38 13.16 29.25 8.52 29.25C7.28 25.86 7.28 17.04 8.52 13.65C13.16 13.65 19.36 16.02 22.81 16.02Z"/></svg>
+      <div><b>咔哒书</b><i>KADA</i></div>
     </div>
     <nav class="steps" id="steps">
       <button data-step="0" class="on"><em>1</em>导入与规格</button>
@@ -660,7 +732,7 @@ input[type=color]{
 
 <div class="reader" id="reader">
   <div class="rb">
-    <span class="ttl" id="readerTitle">光匣</span>
+    <span class="ttl" id="readerTitle">咔哒书</span>
     <span class="kbd">← → 翻页 · 拖动书页 · Esc 退出</span>
     <button class="close" id="readerClose">关闭阅读 ✕</button>
   </div>

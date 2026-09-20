@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="1h8MRLeJyoMLINDZtu7PJG">
+<head data-page-node-id="jlgWtARug7qtncYuFcWJLL">
+<meta charset="utf-8" data-page-node-id="llrHawAD9hCTBMJ616cAKh">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="ylWQcFGQRZRaj77LzGqPnc">
+<title>咔哒书 · 图标方案 2（手绘方向）</title>
+<style>
+:root{
+  --bg:#0e1015; --card:#151922; --line:#252b36; --text:#e9e6e0; --faint:#7f8794;
+  --accent:#f0a63c; --ink:#4a2708; --fa:#eec9a4; --fb:#d7a578; --spark:#ef9f2e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:13.5px/1.65 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 26px 70px}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:.02em}
+h1 small{font-size:14px;font-weight:400;color:var(--faint);letter-spacing:.16em;margin-left:8px}
+.lede{color:#b9b3a8;margin:0 0 8px;max-width:760px}
+h2{font-size:13px;letter-spacing:.2em;color:var(--accent);font-weight:600;
+  margin:40px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.lbl{font-size:11.5px;color:var(--faint);margin-top:9px;text-align:center;display:block}
+.cellc{display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+/* 真实顶栏复刻 */
+.bar{display:flex;align-items:center;gap:26px;padding:11px 16px;border-radius:11px;
+  background:linear-gradient(180deg,#0000,#0000),radial-gradient(900px 300px at 20% -60%,var(--glow,rgba(240,166,60,.14)),transparent 65%),#0b0d11;
+  border:1px solid #1c212a}
+.bar.lt{background:radial-gradient(900px 300px at 20% -60%,rgba(201,125,20,.13),transparent 65%),#f4f2ed;border-color:#e3ded3}
+.brand{display:flex;align-items:center;gap:9px;flex:none}
+.brand .logo{width:29px;height:29px;display:block;flex:none;
+  filter:drop-shadow(0 5px 15px rgba(240,166,60,.14))}
+.brand b{font-size:14.5px;letter-spacing:.06em;font-weight:600}
+.brand i{display:block;font-style:normal;font-size:9px;letter-spacing:.34em;color:var(--faint);margin-top:-3px}
+.bar.lt .brand i{color:#9a9386}
+.steps{display:flex;gap:8px;font-size:12.5px;color:#8b93a0}
+.steps span{padding:5px 11px;border-radius:8px;border:1px solid #232a35}
+.steps span.on{color:var(--accent);border-color:rgba(240,166,60,.42);background:rgba(240,166,60,.11)}
+.bar.lt .steps{color:#8a8377}.bar.lt .steps span{border-color:#e0dbd0}
+.bar.lt .steps span.on{color:#c0740e;border-color:rgba(192,116,14,.4);background:rgba(192,116,14,.09)}
+.skin{font-size:11px;color:var(--faint);min-width:64px;text-align:right}
+/* 像素放大镜 */
+.pix{image-rendering:pixelated;display:block}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--faint);font-weight:500;font-size:11.5px;letter-spacing:.06em}
+td b{color:var(--accent);font-weight:600}
+.note{background:rgba(240,166,60,.07);border:1px solid rgba(240,166,60,.25);
+  border-radius:11px;padding:13px 16px;font-size:12.5px;color:#d8cfc0;margin-top:14px}
+.note b{color:var(--accent)}
+.tag{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:20px;
+  background:rgba(240,166,60,.14);color:var(--accent);border:1px solid rgba(240,166,60,.3);
+  margin-left:8px;vertical-align:2px}
+.tag.gray{background:#20242e;color:#8b93a0;border-color:#2b3240}
+.tab{display:inline-flex;align-items:center;gap:7px;background:#22262f;border-radius:8px 8px 0 0;
+  padding:7px 14px;font-size:12px;border:1px solid #2c323d;border-bottom:none}
+.tab.lt{background:#fff;border-color:#e2ddd2;color:#2a2419}
+.tabbar{border-bottom:1px solid #2c323d;padding-top:8px}
+.tabbar.lt{border-color:#e2ddd2}
+</style>
+</head>
+<body data-page-node-id="t4UEeAjSx9On5LJ1xHvt2i"><div class="wrap" data-page-node-id="etEkuiznjx3PZTyCidFyjm">
+
+<h1 data-page-node-id="UqiiFc0sgddVhNYkvSCIic">咔哒书 <small data-page-node-id="vSX4h5MUeL02DtPpqOzIPl">KADA · 图标方案 2</small></h1>
+<p class="lede" data-page-node-id="Q2809tHfs1m1EITFBRQLDn">按你给的那张小图重做了方向：<b data-page-node-id="Fnkv2bWVYjE658DsCTefNt">手绘质感</b>，不再是几何方块。
+参数不是凭感觉调的 —— 参考图是一张 16×16 的图，我把它逐像素量了一遍，反推出笔宽、填充亮度和对比度，再照数值重画。</p>
+
+<h2 data-page-node-id="DwqEm8X5RdGJ3YJKp9MBFf">一、主推方案 · 放在真实顶栏里（29px 实际尺寸）</h2>
+<div class="grid g2" data-page-node-id="8knF7vTUZ4ROpwIQCWAShT">
+  <div data-page-node-id="meOioedP1g1VjjQgCJDDgD">
+    <div class="bar" data-page-node-id="GFd95fVB9W0sgFS8AjgQBy"><div class="brand" data-page-node-id="N39JH5UHH8lEAXth3FnsG1"><svg class="logo" viewBox="0 0 48 48" id="l1" data-page-node-id="m99aSiumm61bElhtlHJz3N"></svg>
+      <div data-page-node-id="F7quqOtWc61MRiFDaXBpHB"><b data-page-node-id="LK58mTrNjHaVh4EzejFMep">咔哒书</b><i data-page-node-id="7dl6xTRWOFzjBP6f9ezMMy">KADA</i></div></div>
+      <div class="steps" data-page-node-id="YGwIq5fvLtfbpyHCDkwjiK"><span class="on" data-page-node-id="KCeFLccU31dJEv6tDi2GtG">1 导入与规格</span><span data-page-node-id="9xSLntUEht6xoDGLVXHPTV">2 模版美化</span><span data-page-node-id="dvULIbZwBzz7AJOTEt2f13">3 选片成书</span></div>
+    </div>
+    <span class="lbl" data-page-node-id="g7vIM073JAfo3xMHWKgVSI">深色主题（默认）· 倾斜 13°</span>
+  </div>
+  <div data-page-node-id="fGqSyQOP0YKTIxvaRHE6AP">
+    <div class="bar lt" data-page-node-id="Q6bueGrwTe9edhkEIFMIoi"><div class="brand" data-page-node-id="v5Gk2nVVQAJjVt2DO8JSDL"><svg class="logo" viewBox="0 0 48 48" id="l2" data-page-node-id="HDU2o5eHIe8ial6vBw3pkW"></svg>
+      <div data-page-node-id="wF2rCUd080OVHHsHIdCXz7"><b data-page-node-id="qQd0rZMZQmD5GZOq3yQIS8">咔哒书</b><i data-page-node-id="sBoDZjYOGIymk15lGgp3dq">KADA</i></div></div>
+      <div class="steps" data-page-node-id="uaMHcGUV9mK77fjyWAmr5b"><span class="on" data-page-node-id="ayofoETVOADVonmg3CkOZw">1 导入与规格</span><span data-page-node-id="Z0ec3cm0gtAnmVhpaEXyej">2 模版美化</span><span data-page-node-id="WmgZzNkBW6yhDbJboC5rc5">3 选片成书</span></div>
+    </div>
+    <span class="lbl" data-page-node-id="m9j1ANDzZhIIZ055KLsvYr">浅色主题</span>
+  </div>
+</div>
+
+<h2 data-page-node-id="BZP01uxhFqA7rejKUGeteQ">二、同一张图，三种姿态</h2>
+<div class="grid g3" data-page-node-id="sWlnU1uKWp8m9XASBzJ92T">
+  <div class="card cellc" data-page-node-id="BTGF1AmDc7VXyKBKEBgcGH">
+    <svg viewBox="0 0 48 48" width="120" height="120" id="p_tilt" data-page-node-id="WsCOkHvhZYQK0oNAZ9ACmR"></svg>
+    <span class="lbl" data-page-node-id="qTahpFOGaYfoZdhNPIQHZn"><b style="color:var(--accent)" data-page-node-id="eGF2qitvGylPSuDUCl3tvG">倾斜 13°</b> · 推荐<br data-page-node-id="EKifGCzwpDdGKSh0VFObkL">像一枚贴纸，有手作气</span>
+  </div>
+  <div class="card cellc" data-page-node-id="IBh3rnC45iXYOj4X3AFTGZ">
+    <svg viewBox="0 0 48 48" width="120" height="120" id="p_flat" data-page-node-id="dKEUZrw4IzmSC7cvpKwURp"></svg>
+    <span class="lbl" data-page-node-id="dgN2bQv3nUWHQstjQESYfu"><b style="color:var(--accent)" data-page-node-id="dAPExIPzdO6dhyvqOwTsNP">正放</b> · 最稳<br data-page-node-id="n2uGGWjeKfwBZHLfGNvMpP">与横排文字基线齐平</span>
+  </div>
+  <div class="card cellc" data-page-node-id="Qp061D0bwZ1vDYYqGUj5bA">
+    <svg viewBox="0 0 48 48" width="120" height="120" id="p_spark" data-page-node-id="YfEFh1SbxmYoGwvKaZ5Crs"></svg>
+    <span class="lbl" data-page-node-id="fYZ8xdJrskx8wh612q1S3z">带「咔哒」火花<br data-page-node-id="p1FrX0EsdPib9cjHkaehEc">适合首屏大图 / 启动页</span>
+  </div>
+</div>
+
+<h2 data-page-node-id="G6sDp6ji9FvVmUTREOuCrF">三、两种配色 · 参考图的暖棕 / 跟产品主色的琥珀</h2>
+<p class="lede" style="font-size:12.5px" data-page-node-id="Z08oF0DVOAe6PgWHjVN5KP">同一份矢量，只换两个色值。左边忠实于你给的参考图（暖棕 = 彩铅本色）；
+右边把色相挪到产品的琥珀金上，和顶栏的按钮、强调色是同一族。</p>
+<div class="grid g2" data-page-node-id="QbesNdsafl4zPHjHjspSyX">
+  <div class="card cellc" data-page-node-id="61fhKic06KpHlCtAfRWHtB">
+    <div style="display:flex;align-items:flex-end;gap:26px" data-page-node-id="b9Vxu9LcSQXS6LHCtZzX4O">
+      <svg viewBox="0 0 48 48" width="104" height="104" id="t_ref" data-page-node-id="fzRFvuCiu4flb1eQ7YxMPv"></svg>
+      <svg viewBox="0 0 48 48" width="29" height="29" id="t_ref29" data-page-node-id="ipZXIHwgDaYNGOh6mRq9vt"></svg>
+    </div>
+    <span class="lbl" data-page-node-id="4RrDKNz5S1iTfTRx2tkCq1"><b style="color:var(--accent)" data-page-node-id="kqjhZtwpoq5RnFrtbt5N5L">暖棕</b>（参考图色）· 描边 #4A2708 / 填充 #EEC9A4→#D7A578<br data-page-node-id="DZEdNMvmYRSP8ekEcSEckH">
+      像一本真的旧书，气质安静</span>
+  </div>
+  <div class="card cellc" data-page-node-id="1GRLyQYTnoMHnJa7ToZA2H">
+    <div style="display:flex;align-items:flex-end;gap:26px" data-page-node-id="zsCYBvkXVmc3V2NKForQyG">
+      <svg viewBox="0 0 48 48" width="104" height="104" id="t_amb" data-page-node-id="Ii9lnnsq0H8wuVBHrYHdz6"></svg>
+      <svg viewBox="0 0 48 48" width="29" height="29" id="t_amb29" data-page-node-id="8NnIJN5UhD2tlA3RpHn7p2"></svg>
+    </div>
+    <span class="lbl" data-page-node-id="sEZUo4T4XdaRyDSUW5NGqe"><b style="color:var(--accent)" data-page-node-id="xKdkXqRHx2EO9GuaSFQB6V">琥珀</b>（跟产品主色）· 描边 #55300F / 填充 #F6CE8E→#E0A44E<br data-page-node-id="D9EFD1pCASFYM8FhJtlJHg">
+      和顶栏强调色同族，整体更"一个品牌"</span>
+  </div>
+</div>
+
+<h2 data-page-node-id="iGz5r9Nw4IZ4JxbgjdfpNF">四、尺寸尺 · 一直缩到 16px</h2>
+<div class="card" style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap" data-page-node-id="TSXyv8ezDHdcKMO1xxgiYE">
+  <div class="cellc" data-page-node-id="q24UlYe2hG45ly5J1Uh6WH"><svg viewBox="0 0 48 48" width="140" height="140" id="s140" data-page-node-id="fVbPxlN2FGSL8yB3ynUtCS"></svg><span class="lbl" data-page-node-id="BRFtLKmuIHqWka9GtQOVyq">140</span></div>
+  <div class="cellc" data-page-node-id="JcMkBYOjfCZIXlvZCu8DjU"><svg viewBox="0 0 48 48" width="96" height="96" id="s96" data-page-node-id="bQDKgOJrdasQr3YH5Zow99"></svg><span class="lbl" data-page-node-id="ZfH5rEEaRgt4nWaEA4OyI4">96</span></div>
+  <div class="cellc" data-page-node-id="fH2xWPzcrV9DLbFeVUR3BG"><svg viewBox="0 0 48 48" width="64" height="64" id="s64" data-page-node-id="OFd6PT2BU2NVeZdFG7Bo7t"></svg><span class="lbl" data-page-node-id="ov9LfCPmi61FtJYf3Qbn2B">64</span></div>
+  <div class="cellc" data-page-node-id="xHE5SDqlxwH7Fv4c0E3aVV"><svg viewBox="0 0 48 48" width="48" height="48" id="s48" data-page-node-id="gznYubmyhUza4hGQsPHyRf"></svg><span class="lbl" data-page-node-id="TF2NjDQNNw9yp8arrfQJzF">48</span></div>
+  <div class="cellc" data-page-node-id="zzQDpDLBvCCUQeXBvFKeoj"><svg viewBox="0 0 48 48" width="32" height="32" id="s32" data-page-node-id="FTpBQQfG1J7Ff3LfNTmgKL"></svg><span class="lbl" data-page-node-id="EYElhBEWbl5bVEf0pYbS8O">32</span></div>
+  <div class="cellc" data-page-node-id="X3eDvYJrHm9uhKBpwFEvGN"><svg viewBox="0 0 48 48" width="29" height="29" id="s29" data-page-node-id="0fMVhJKjIbvzO2QYfqICJv"></svg><span class="lbl" data-page-node-id="WZP6EWGpJQQp0650gASdhi">29<br data-page-node-id="ABTBuYlWGLCGWXxclrAoHD">顶栏</span></div>
+  <div class="cellc" data-page-node-id="OnovOLYUZiFHaY7bBYEeYE"><svg viewBox="0 0 48 48" width="24" height="24" id="s24" data-page-node-id="9P04Ot72Sj0790D3t0xnRf"></svg><span class="lbl" data-page-node-id="AoHj3uJRDRKK6tvD3qQUcg">24</span></div>
+  <div class="cellc" data-page-node-id="bpw31Vl4idAlYnhkN7sVYh"><svg viewBox="0 0 48 48" width="16" height="16" id="s16" data-page-node-id="KoTIvfleTUbf1rhD3wJwwp"></svg><span class="lbl" data-page-node-id="hfCXdAb1f6TQUnE11RiTSS">16<br data-page-node-id="M2Bo8SYGCZbBWtpPdfSBcT">标签页</span></div>
+  <div class="cellc" data-page-node-id="vMae0Hg3aJ8OHbBofr3JVV"><img class="pix" src="" id="zoom16" width="128" height="128" data-page-node-id="hM63F4IQvqzbjHB23WZutj"><span class="lbl" data-page-node-id="jUEdtFAI7NuPqJESgWriVY">16px 放大 8×<br data-page-node-id="DGivJ0YlZGRvfQVDNCWLdZ">（真实像素）</span></div>
+</div>
+
+<h2 data-page-node-id="X28vwtXXWEbJB7A9ELUD4a">五、单色版（必须能压成一个颜色）</h2>
+<div class="grid g2" data-page-node-id="XC6lYTCVAxNXnhQJ6USmFC">
+  <div class="card cellc" style="flex-direction:row;gap:24px;justify-content:center" data-page-node-id="cAWwrmQ0FWlCOoiTVEKYWY">
+    <svg viewBox="0 0 48 48" width="72" height="72" id="m1" style="color:#f0a63c" data-page-node-id="opLOaz4qOXc7BdnpPuL3nF"></svg>
+    <svg viewBox="0 0 48 48" width="48" height="48" id="m2" style="color:#f0a63c" data-page-node-id="FZnQDpZvHfAEiiC7vorTaA"></svg>
+    <svg viewBox="0 0 48 48" width="29" height="29" id="m3" style="color:#f0a63c" data-page-node-id="aXFypPxqCn1UsQkjENDRG7"></svg>
+    <svg viewBox="0 0 48 48" width="29" height="29" id="m4" style="color:#c0740e" data-page-node-id="xPfSKXjUlJQKP44u7dqpkh"></svg>
+    <svg viewBox="0 0 48 48" width="29" height="29" id="m5" style="color:#ffffff" data-page-node-id="GeznRhDqWaovxZTzu6ZMC4"></svg>
+  </div>
+  <div class="card" data-page-node-id="Kbb6ZtRheCuhjyRYubgFNc"><p style="margin:0;font-size:12.5px;color:#b9b3a8" data-page-node-id="tl10lhusQK1B7vH6qEm1Oy">
+    同一个矢量，把描边和填充都取 <code style="color:#f0a63c" data-page-node-id="Fa0uvzAvwFxg1UouICX9hY">currentColor</code>（填充降透明度），
+    就能当单色标用：跟着强调色走、白色版、或将来印在纸上。<br data-page-node-id="YO8lm9S3A9bnB7yDxCHMWU"><br data-page-node-id="pLjNj0diOE1yfqqSKvTuoK">
+    彩色版是「品牌物料」，正常情况用它；单色版是「备用档」，用在必须压成一色的地方。</p></div>
+</div>
+
+<h2 data-page-node-id="zfnAd6l2bePIQajvi6yqe4">六、参考图 ↔ 本方案的数值对照</h2>
+<div class="card" style="padding:6px 14px" data-page-node-id="JN8beuD2SXBeV3KVG8xDK9">
+<table data-page-node-id="0jLzQqXmYIaQQ9by4IVYoJ">
+<tr data-page-node-id="Qa1ZQL6CxNIeRHtvKDqvkS"><th data-page-node-id="yLC6IeoUpwH20IhKcVaFIU">参数</th><th data-page-node-id="yBAnGPS8Koj1r1XWicwsbT">你给的参考图（16px 实测）</th><th data-page-node-id="S6df5Fv00o9qsnWlGxEz40">本方案（48 网格）</th><th data-page-node-id="WtjyK4orkCRutRZlhpPKok">说明</th></tr>
+<tr data-page-node-id="B98NcKQAuusNG9ln98QAnt"><td data-page-node-id="cKO3nB3sM82VPdFxEEIGJp">描边宽度</td><td data-page-node-id="LO2Af86aGdrAL5bw0cOTQQ">≈1.2px / 16px ＝ 7.5%</td><td data-page-node-id="2PJco0aH39heBATT6kUBDo"><b data-page-node-id="Sb5iB7eFsjCSV8MGYr7vMB">3.4 / 48 ＝ 7.1%</b></td><td data-page-node-id="GekdHhNDHdngJoTUugHKUL">第一版我画了 5.4（11.3%）—— 太粗，内部细节全糊死</td></tr>
+<tr data-page-node-id="1eaQN9lXH9XW93Xu6lnpXq"><td data-page-node-id="g2pyn3o2YuPnw14BePFqms">填充色</td><td data-page-node-id="jYCsGV6OjtA4s73vsOzlTr">lum ≈ 176（#D8A890 暖棕）</td><td data-page-node-id="V1SXVgYUWDPd52PNr58K7W"><b data-page-node-id="KonbYVQEC4EAtfwJJyMfxq">#EEC9A4 → #D7A578</b></td><td data-page-node-id="SVj81gHrxboXICFmH0IPwb">第一版用了奶油白 lum≈223，比参考亮太多</td></tr>
+<tr data-page-node-id="JvrIDeTP6wlcLswDpGhDlK"><td data-page-node-id="ujvoAlBhCcAFNJVCjgK5x7">填 / 描亮度比</td><td data-page-node-id="uD05OmNF1aUrSa7f0tc6RK">≈ 2.9</td><td data-page-node-id="KdAlcptDKWAOdzmuiGsBLv"><b data-page-node-id="OaaY2E0vbeoyP7r4J3QmZN">≈ 4.0</b></td><td data-page-node-id="ddtcLzjdFOkAZBIPrcb9Hr">比值太大就是"卡通黑描边"，太小就看不见轮廓</td></tr>
+<tr data-page-node-id="XXLgkbcQASkBSXDeBKwSMe"><td data-page-node-id="LN1BqhKtwG1GWLGYX1m1QV">描边色</td><td data-page-node-id="0YDlbRP2iXVuF3pVPcxVMz">lum ≈ 60</td><td data-page-node-id="GJoewELNBxpI1l9jUk77LR"><b data-page-node-id="przVUrtEYRewBCpdN4bm5P">#4A2708</b></td><td data-page-node-id="lAGDQyT4U8JuJ4F89c4Jp4">深暖棕，不是纯黑 —— 这是"彩铅"而非"描线"的关键</td></tr>
+<tr data-page-node-id="4ljkR5U3NOn8Ztxjo3v5Wh"><td data-page-node-id="pBaDUh1olEx7P3lSgH9Gz4">内部细节</td><td data-page-node-id="kkay1jC4LFn3CEwS1ajeyU">2 条短线</td><td data-page-node-id="nvFCNYh0ySeQFuxl4DFbjj"><b data-page-node-id="GWIKoBucnqPBHWWEVCCBd3">2 条页线 + 1 条中缝</b></td><td data-page-node-id="RZRuJiUlAPGjCG6btuakZt">参考图靠两根鳃线认鱼；这里靠页线认"书"</td></tr>
+<tr data-page-node-id="VNx2WU8U8NP9UYCdVYLTU6"><td data-page-node-id="gRBzxl0jTzvMFTHAHd8aNZ">倾斜</td><td data-page-node-id="rYup8IyBiFNBWB6OBFzz1L">≈ 40°</td><td data-page-node-id="dLl1mjTI8iYoxQIT7U6Cs2"><b data-page-node-id="FGBEnRF92ewONXOEDggvGG">13°</b></td><td data-page-node-id="Rr7ImT5LO5ml9439mkDmLn">40° 在顶栏里会显得"要倒了"，13° 只取那点精神</td></tr>
+<tr data-page-node-id="Zs7Yzt0PABI3kN6oUTyGFU"><td data-page-node-id="TazcWxBbxTxdHlSLtQUxE7">外形块数</td><td data-page-node-id="y622wJGwTo8CC4Zh3OcVz1">1 个实心块 + 1 条尾鳍</td><td data-page-node-id="4cLgU63yQCY47dGAvxmFCY"><b data-page-node-id="QVfaNAD54x9CJWjSj9NqAx">1 个实心块</b></td><td data-page-node-id="LT8bE11IpNTSEOjzorKUrY">信息量刻意压到最低，16px 才不糊</td></tr>
+</table>
+</div>
+
+<h2 data-page-node-id="uy5vnVQnUxQ66uyWoGZUic">七、6 套氛围皮肤下长什么样</h2>
+<p class="lede" style="font-size:12.5px" data-page-node-id="O9yjJnTryGsEVRwnWPJCDa">图标自带暖色，<b data-page-node-id="uR2efi8zVlPcGV1BJH4OxV">不跟着皮肤换色</b> —— 它像一枚贴在界面上的实物贴纸。
+下面只变界面的强调色，图标始终是同一个。</p>
+<div class="card" style="padding:12px 14px;display:grid;gap:9px" id="skins" data-page-node-id="0o9ASgookl30XfD1LgHO4C"></div>
+
+<h2 data-page-node-id="m1zT6fGvA7YlQrlycYv8LN">八、浏览器标签页 / favicon</h2>
+<div class="card" data-page-node-id="36YYipg3YBdr9zVyFoGKJl">
+  <div class="tabbar" data-page-node-id="QcTLMPfLNy4ynYde6HrHWt"><span class="tab" data-page-node-id="uaHYK2mu0it4PnKg0MZIaZ"><img class="pix" src="" id="fav" width="16" height="16" data-page-node-id="Mavx9qCHXukzTnk5pwei9O">咔哒书</span></div>
+  <div class="tabbar lt" style="margin-top:10px" data-page-node-id="kaYJ6vrXCVAx998PxJddr5"><span class="tab lt" data-page-node-id="nfkCUsvTh9olI5Uyhblrzf"><img class="pix" src="" id="fav2" width="16" height="16" data-page-node-id="9e7EC0IfAu2C4511oawYOX">咔哒书</span></div>
+  <p style="margin:12px 0 0;font-size:12.5px;color:#b9b3a8" data-page-node-id="ddY2SxBnGn56Mz6FDwrbKk">favicon 仍然内嵌成 data-URI（不引外部文件），所以还是单文件、离线可用。</p>
+</div>
+
+<h2 data-page-node-id="7Jh09xvdsKPgYgyUNciOTY">九、与之前那版（被否掉的）对照</h2>
+<div class="card" style="display:flex;gap:34px;align-items:center;justify-content:center;flex-wrap:wrap" data-page-node-id="gvRIaNlOACtgjeVakosOn0">
+  <div class="cellc" data-page-node-id="Fthr10pseZoa9AAxKkmn5P">
+    <svg viewBox="0 0 48 48" width="92" height="92" data-page-node-id="CfTzUB8n1uqCPG36SUVcLk"><path fill="#f0a63c" fill-rule="evenodd" d="M16.1 3.2 h15.8 a12.9 12.9 0 0 1 12.9 12.9 v15.8 a12.9 12.9 0 0 1 -12.9 12.9 h-15.8 a12.9 12.9 0 0 1 -12.9 -12.9 v-15.8 a12.9 12.9 0 0 1 12.9 -12.9 ZM25.19 33.99C28.64 31.38 34.84 29.25 39.48 29.25C40.72 25.86 40.72 17.04 39.48 13.65C34.84 13.65 28.64 16.02 25.19 16.02ZM22.81 33.99C19.36 31.38 13.16 29.25 8.52 29.25C7.28 25.86 7.28 17.04 8.52 13.65C13.16 13.65 19.36 16.02 22.81 16.02Z" data-page-node-id="ti2OZd44jxgyHhkwAa2gyL"/></svg>
+    <span class="lbl" data-page-node-id="ucerh7vjQdHTGlhWRrCz6F">旧 · 几何方块挖空<br data-page-node-id="en0IFLcYpkMDAO5DBaFyDq"><span class="tag gray" data-page-node-id="ApnZm681Dmgb9Ek6IAU70T">已否</span></span>
+  </div>
+  <div style="font-size:26px;color:#4a5160" data-page-node-id="ciAVgzthjsXlpElJvuhDMu">→</div>
+  <div class="cellc" data-page-node-id="anH4ab38TD7RHU70yiP5Ex">
+    <svg viewBox="0 0 48 48" width="92" height="92" id="newbig" data-page-node-id="y1zZqnUT362MCS0Qyv65ES"></svg>
+    <span class="lbl" data-page-node-id="xT95vYjaeuvG4cp7T2u7Yx">新 · 手绘小书<span class="tag" data-page-node-id="DvdFp5plFsujmcGgTOjPZi">推荐</span></span>
+  </div>
+</div>
+
+<h2 data-page-node-id="OhFL0pyKrLS0VKiL4Sw86U">十、定稿后要动的地方</h2>
+<div class="card" style="padding:6px 14px" data-page-node-id="rI8nzlIrJwoOoQZPNqeynb">
+<table data-page-node-id="SWO8S3N3HNFemBxj8XXh6y">
+<tr data-page-node-id="mso3HBxWLqaJcygE00Yo3N"><th data-page-node-id="7yzfRpel5qBC3Jw4qLEN1s">位置</th><th data-page-node-id="vgCIaoASchBKS4MNjHpu0O">现在</th><th data-page-node-id="cGgFsmJjl1NHC4ED9NAkKY">改成</th></tr>
+<tr data-page-node-id="2HpahFcbygvxAKuRiXvOLu"><td data-page-node-id="K8wCvB16NBHiycgHc3ee73">顶栏图标 29px</td><td data-page-node-id="kI5HDXO3fb5C7ShAk2kxSC">琥珀方块 + 挖空的书</td><td data-page-node-id="a8Mvi994xR9IsOd3ODQ8EE">手绘小书（本页矢量）</td></tr>
+<tr data-page-node-id="LJKP1kAforhquwBUGEaBRE"><td data-page-node-id="JaWn0A8DiFbEjzj8txs83k">favicon / 标签页</td><td data-page-node-id="sJSpyeQL9nVQsPPArEpJuZ">同一个方块</td><td data-page-node-id="IMeVCL6vucP7IPRB25uLx5">手绘小书（同一份矢量，data-URI）</td></tr>
+<tr data-page-node-id="qDFghl9CEQm0a6n26DZacY"><td data-page-node-id="pd7oHdvzHT4B8xK29QytHm">顶栏光晕 drop-shadow</td><td data-page-node-id="nBAL7FZicH37Ab0ZFw0sLT"><code data-page-node-id="flFfGWj4JUk20xqmoQE7d0">0 5px 15px var(--glow)</code></td><td data-page-node-id="ngUTTqdKe3U59SiqMjzA0C">按新图标重新定（琥珀光晕配棕色实物感有点冲）</td></tr>
+<tr data-page-node-id="gjs1w0vxS0XiztrKIIYA41"><td data-page-node-id="59VjArFx9zBfZG7aI1llaS">首屏 hero</td><td data-page-node-id="Kigd6FhdJotgqQOWUg9Rya">「匣」字印章</td><td data-page-node-id="NE8S2qDuyuHauxJRRpAGsv">可选：换成带火花的版本作大图</td></tr>
+</table>
+<p style="font-size:12.5px;color:#b9b3a8;margin:12px 0 4px" data-page-node-id="tdhaXv3ZYH0wD8kDyXpQjY">
+上面三项都<b style="color:var(--accent)" data-page-node-id="3HrRx4PpDrxPbUNuP6bSHi">还没动</b> —— 等你在这一版里定了姿态，我再落地 + 重跑 290 项回归。
+上一轮改名（咔哒书 / KADA、书名书脊、导出文件名、存档迁移）已经生效，不受这次影响。</p>
+</div>
+
+<script>
+const INK='#4a2708', FA='#eec9a4', FB='#d7a578', SPARK='#ef9f2e';
+const SW=3.4, IW=1.9;
+
+/* 48 网格。整体放过 1.055×1.17（视觉分量对齐旧方块），再下移 1.05 居中 */
+const OPEN='M4.69 12.42C11.66 10.55 19.25 12.42 24 16.16C28.75 12.18 36.34 10.43 43.31 12.07C44.15 17.68 43.94 26.22 42.57 31.72C35.82 32.19 28.75 33.95 24 35.35C19.15 33.83 12.08 32.42 5.33 31.25C3.53 24.94 3.85 17.1 4.69 12.42Z';
+const PL='M9.86 21.19C13.24 20.26 16.51 20.61 19.15 21.54';
+const PR='M28.85 21.54C31.49 20.61 34.76 20.26 38.14 21.19';
+const GUT='M24 17.21C23.58 22.71 23.58 28.91 24 34.76';
+const SPK='M37.4 4.6C38.9 7.6 40.6 8.8 43.6 9.4C40.6 10 38.9 11.2 37.4 14.2C35.9 11.2 34.2 10 31.2 9.4C34.2 8.8 35.9 7.6 37.4 4.6Z';
+
+const TONES={ref:{ink:'#4a2708',fa:'#eec9a4',fb:'#d7a578'},
+             amb:{ink:'#55300f',fa:'#f6ce8e',fb:'#e0a44e'}};
+
+function defs(id,tone){return `<defs>
+ <linearGradient id="g${id}" x1="0" y1="0" x2=".25" y2="1">
+   <stop offset="0" stop-color="${tone.fa}"/><stop offset="1" stop-color="${tone.fb}"/></linearGradient>
+ <clipPath id="c${id}"><path d="${OPEN}" transform="translate(0 1.05)"/></clipPath>
+</defs>`;}
+
+function mark(id,opt={}){
+  const mono=opt.mono, deg=opt.deg??-13, spark=opt.spark;
+  const tone=TONES[opt.amb?'amb':'ref'];
+  const ink = mono?'currentColor':tone.ink;
+  const g = (inner)=>deg?`<g transform="rotate(${deg} 24 24)">${inner}</g>`:inner;
+  const body = `
+   <g transform="translate(0 1.05)">
+     <path d="${OPEN}" fill="${mono?'currentColor':'url(#g'+id+')'}"
+           fill-opacity="${mono?'.18':'1'}" stroke="${ink}" stroke-width="${SW}"
+           stroke-linejoin="round" stroke-linecap="round"/>
+     <g clip-path="url(#c${id})">
+       <path d="${OPEN}" fill="none" stroke="${ink}" stroke-width="1.1" opacity=".26"
+             transform="translate(.55 -.6)"/>
+     </g>
+     <g stroke="${ink}" stroke-width="${IW}" stroke-linecap="round" fill="none" opacity=".5">
+       <path d="${PL}"/><path d="${PR}"/>
+     </g>
+     <path d="${GUT}" stroke="${ink}" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".95"/>
+   </g>`;
+  const sp = spark?`<path d="${SPK}" fill="${mono?'currentColor':SPARK}"
+      fill-opacity="${mono?'.85':'1'}" stroke="${ink}" stroke-width="2.8" stroke-linejoin="round"/>`:'';
+  return defs(id,tone)+g(body+sp);
+}
+
+let n=0;
+function put(id,opt){const el=document.getElementById(id); if(el) el.innerHTML=mark('x'+(n++),opt);}
+
+/* 顶栏 29px */
+put('l1',{deg:-13}); put('l2',{deg:-13});
+/* 三种姿态大图 */
+put('p_tilt',{deg:-13}); put('p_flat',{deg:0}); put('p_spark',{deg:-13,spark:true});
+/* 两种配色 */
+put('t_ref',{deg:-13}); put('t_ref29',{deg:-13});
+put('t_amb',{deg:-13,amb:true}); put('t_amb29',{deg:-13,amb:true});
+/* 尺寸尺（都用倾斜版） */
+for(const s of [140,96,64,48,32,29,24,16]) put('s'+s,{deg:-13});
+/* 单色 */
+put('m1',{deg:-13,mono:true}); put('m2',{deg:-13,mono:true});
+put('m3',{deg:-13,mono:true}); put('m4',{deg:-13,mono:true}); put('m5',{deg:-13,mono:true});
+put('newbig',{deg:-13});
+
+/* 皮肤行 */
+const SK=[['原味','#f0a63c','rgba(240,166,60,.14)'],['蜜桃气泡','#f2768f','rgba(242,118,143,.15)'],
+ ['雾紫梦境','#a98cf0','rgba(169,140,240,.15)'],['薄荷苏打','#4fc4a8','rgba(79,196,168,.15)'],
+ ['夜樱','#f06ea0','rgba(240,110,160,.15)'],['法式午后','#c8944a','rgba(200,148,74,.15)']];
+let sh='';
+SK.forEach((s,i)=>{
+  sh+=`<div class="bar" style="--accent:${s[1]};--glow:${s[2]}">
+    <div class="brand"><svg class="logo" viewBox="0 0 48 48" id="sk${i}"></svg>
+    <div><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><span class="on">1 导入与规格</span><span>2 模版美化</span><span>3 选片成书</span></div>
+    <span class="skin">${s[0]}</span></div>`;
+});
+document.getElementById('skins').innerHTML=sh;
+SK.forEach((s,i)=>put('sk'+i,{deg:-13}));
+
+/* favicon：同一份矢量 → data-URI */
+function favURI(){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">${mark('fav',{deg:-13})}</svg>`;
+  return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
+}
+const u=favURI();
+document.getElementById('fav').src=u; document.getElementById('fav2').src=u;
+
+/* 16px 真实像素放大 8x */
+const c=document.createElement('canvas'); c.width=16; c.height=16;
+const cx=c.getContext('2d');
+const img=new Image();
+img.onload=()=>{ cx.imageSmoothingEnabled=false; cx.drawImage(img,0,0,16,16);
+  const z=document.createElement('canvas'); z.width=16;z.height=16;
+  z.getContext('2d').drawImage(c,0,0);
+  document.getElementById('zoom16').src=z.toDataURL(); };
+img.src=u;
+</script>
+</div></body></html>

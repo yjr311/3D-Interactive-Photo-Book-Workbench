@@ -16,7 +16,7 @@ import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html
    F9 刷新后首屏仍然是空的（设置恢复了，但照片本来就不该自动加载）
 */
 
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 const R = [];
 const ok = (n, c, extra = '') => R.push((c ? 'PASS' : '**FAIL**') + ' ' + n + (extra ? '  ' + extra : ''));
 

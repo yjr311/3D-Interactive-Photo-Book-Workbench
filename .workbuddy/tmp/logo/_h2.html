@@ -1,0 +1,65 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>手绘方向 v2</title>
+<style>
+ body{margin:0;background:#0e1015;color:#e9e6e0;font:13px/1.6 "Microsoft YaHei",sans-serif}
+ .wrap{padding:18px}
+ .row{display:flex;gap:22px;align-items:flex-end;border-bottom:1px dashed #2a2f3a;padding:16px 6px}
+ .row h3{width:160px;font-size:13px;margin:0;color:#f0a63c;flex:none}
+ .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+ .cell span{font-size:11px;color:#7f8794}
+ .light{background:#f4f2ed;color:#241f18;border-radius:10px}
+ .light .cell span{color:#8a8377}
+</style></head><body><div class="wrap" id="w"></div>
+<script>
+const INK='#4a2708', FILL='#e0b492', SHADE='#c99a72', SPARK='#ef9f2e';
+const SW=3.6, IW=1.7;
+
+/* 摊开小书：并集轮廓 */
+const OPEN='M5.9 13.9C12.4 12.6 19.6 14 24 17.2C28.4 14 35.6 12.6 42.1 13.9C42.9 18 43.1 25.6 41.8 30.4C35.4 30.9 28.6 32.4 24 33.6C19.4 32.4 12.6 30.9 6.2 30.4C4.9 25.6 5.1 18 5.9 13.9Z';
+const GUT='M24 17.9C23.6 22.9 23.6 28.1 24 33.2';
+const L1='M10.2 21.4C13.4 20.7 16.8 21 19.6 21.7', L2='M10.6 25.4C13.6 24.8 16.8 25 19.4 25.7';
+const R1='M28.4 21.7C31.2 21 34.6 20.7 37.8 21.4', R2='M28.6 25.7C31.2 25 34.4 24.8 37.4 25.4';
+/* 合上小书：微侧，左书脊右切口 */
+const BODY='M13.4 14.6C20.4 13.1 28.8 13.1 35.6 14.8C36.4 21.7 36.4 29.3 35.4 36C28.4 37.6 19.8 37.6 12.9 35.9C12 29.1 12.1 21.7 13.4 14.6Z';
+const SPINE='M17.4 14.3C16.6 21.7 16.6 29.3 17.2 36.2';
+const CLASP='M35.6 25.7C35.6 22.9 36.8 21.4 38.9 21.3C41 21.2 42.3 22.8 42.3 25.7C42.3 28.5 41 30.1 38.9 30.1C36.8 30.1 35.6 28.5 35.6 25.7Z';
+const RIBBON='M20.2 36.2C19.8 39.6 20 42.2 20.6 44C22.2 42.8 23.6 42.8 25 44C25.6 42.2 25.8 39.6 25.4 35.9C23.6 36.4 21.9 36.4 20.2 36.2Z';
+
+function wrap(inner,deg){return deg?`<g transform="rotate(${deg} 24 24)">${inner}</g>`:inner;}
+
+function openMark(deg){
+  return `
+  <path d="${OPEN}" fill="${FILL}" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+  <g stroke="${INK}" stroke-width="${IW}" stroke-linecap="round" fill="none" opacity=".42">
+    <path d="${L1}"/><path d="${L2}"/><path d="${R1}"/><path d="${R2}"/>
+  </g>
+  <path d="${GUT}" stroke="${INK}" stroke-width="${IW}" stroke-linecap="round" fill="none" opacity=".5"/>`;
+}
+function closedMark(extra){
+  return `
+  <path d="${BODY}" fill="${FILL}" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+  ${extra}
+  <path d="${SPINE}" stroke="${INK}" stroke-width="${IW}" stroke-linecap="round" fill="none" opacity=".45"/>`;
+}
+const MK={
+  A2:()=>wrap(openMark(),0),
+  A2t:()=>wrap(openMark(),-16),
+  B2:()=>closedMark(`
+     <path d="${CLASP}" fill="${FILL}" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>
+     <circle cx="38.9" cy="25.7" r="1.5" fill="${INK}" opacity=".7"/>`),
+  C2:()=>closedMark(`
+     <path d="${RIBBON}" fill="${SPARK}" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round"/>`),
+};
+const NAMES={A2:'A 摊开小书',A2t:'A′ 摊开小书·倾斜16°',B2:'B 合上小书+搭扣',C2:'C 合上小书+书签带'};
+
+function mk(k,px){return `<svg viewBox="0 0 48 48" width="${px}" height="${px}">${MK[k]()}</svg>`;}
+let h='';
+for(const k of ['A2','A2t','B2','C2']){
+  h+=`<div class="row"><h3>${NAMES[k]}</h3><div class="cell">${mk(k,168)}<span>168</span></div>`;
+  for(const p of [96,64,48,32,24,16]) h+=`<div class="cell">${mk(k,p)}<span>${p}</span></div>`;
+  h+='</div>';
+}
+h+='<div class="row light">';
+for(const k of ['A2','A2t','B2','C2']) h+=`<div class="cell">${mk(k,72)}<span>${NAMES[k]} 浅底</span></div>`;
+h+='</div>';
+document.getElementById('w').innerHTML=h;
+</script></body></html>

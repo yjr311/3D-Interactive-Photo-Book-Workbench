@@ -1,0 +1,10 @@
+import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html-in-browser/scripts/cdp.mjs';
+const OUT = 'C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/.workbuddy/tmp/logo';
+const OLD = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/.workbuddy/tmp/_prev_%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const b = await launch({ port: 9613, windowSize: '1380,880' });
+await b.goto(OLD, 3000);
+await sleep(900);
+const t = await b.evaluate('document.title');
+console.log('旧产物标题:', t);
+await b.screenshot(`${OUT}/old-顶栏.png`);
+await b.close();

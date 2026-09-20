@@ -2,7 +2,7 @@
 """探针：胶片带卡片宽度 / CSS 变量 / dock 高度 到底是多少。"""
 import io, os, re, subprocess, sys
 
-SRC = r"C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/光匣-3D互动照片书.html"
+SRC = r"C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/咔哒书-3D互动照片书.html"
 CHROME = r"C:/Users/zz/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe"
 WIN = sys.argv[1] if len(sys.argv) > 1 else "1496,805"
 

@@ -3,7 +3,7 @@ import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html
 /* 用 CDP 原生输入确认「翻页」这条路径本身没问题：
    键盘 ArrowRight/ArrowLeft、画布上真实鼠标拖拽。 */
 
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 const R = [];
 const ok = (n, c, extra = '') => R.push((c ? 'PASS' : '**FAIL**') + ' ' + n + (extra ? '  ' + extra : ''));
 

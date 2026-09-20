@@ -13,7 +13,7 @@ import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html
    这么把页面自己的 raf 链打断的：包装后 `oRaf(cb)` 丢了 this，Chrome 直接抛
    Illegal invocation，沉浸阅读器整个打不开，看起来像产品 bug。要取证就在
    被测代码里加钩子，不要去改页面全局。 */
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 
 const b = await launch({ port: 9433, windowSize: '1400,920' });
 await b.goto(FILE, 2600);
@@ -248,7 +248,8 @@ chk(o9.drewPixels && o9.drewPixels.pct > 60,
    两条主线：
    ① 书页画面默认取「模版成品」，而且 28 页真的长得不一样 —— 丑的根因从来不是
       用了模版，而是模版那句全局同一行的「今日份」被印了 28 遍。现在文字按照片解占位符。
-   ② 模版自带题字时，书页不再重复画一次图注（同一信息出现两次）。 */
+   ② 图注的抑制条件是「印片里写着**同一句话**」，不是「印片里有字」——
+      出厂 opts.title='{name}'，看成片有没有 title 会恒为真，图注就永远不画了。 */
 const t10 = await b.evaluate(`(async function(){
   function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   var L=window.LUMEN, st=L.state;
@@ -281,8 +282,27 @@ const t10 = await b.evaluate(`(async function(){
   var hashes=content.map(function(p){ return hashPage(p.canvas); });
   var uniqPages=Object.keys(hashes.reduce(function(a,h){ a[h]=1; return a; },{})).length;
 
-  /* ④ 模版自带题字时不再重复画图注 */
-  var capSkip=L.plateHasText(g)&&!L.capWillDraw(g);
+  /* ④ 书页图注的抑制条件必须比「内容」而不是比「有没有字」。
+     出厂 opts.title='{name}' → 每张成片都带非空 title，
+     只看"有没有字"会让图注在任何页面上都不画（用户写了文案书里一个字都没有）。
+     正确行为：文案 ≠ 印片题字 → 画；文案 = 印片题字（opts.title 用 {note}）→ 不重复。 */
+  var ph=L.photoOfIm(g);
+  var kp={layout:st.book.layout, title:st.opts.title, cap:st.book.cap};
+  st.book.layout='mat'; st.book.cap='note';
+  var Wq=620,Hq=820, PBq=Hq*.104, capYq=Hq-PBq-Wq*.048, csq=16;
+  var yAq=Math.round(capYq-csq*0.9), yBq=Math.round(capYq+csq*2.0);
+  ph.note=''; var qa=L.renderContent([g],3,Wq,Hq,'r');
+  ph.note='无题，但很喜欢'; var qc=L.renderContent([g],3,Wq,Hq,'r');
+  var qda=qa.getContext('2d').getImageData(0,yAq,Wq,yBq-yAq).data;
+  var qdc=qc.getContext('2d').getImageData(0,yAq,Wq,yBq-yAq).data;
+  var capBand=0;
+  for(var qi=0;qi<qda.length;qi+=4){
+    if(Math.abs(qda[qi]-qdc[qi])+Math.abs(qda[qi+1]-qdc[qi+1])+Math.abs(qda[qi+2]-qdc[qi+2])>12) capBand++;
+  }
+  var capDraw=L.capWillDraw(g);                        /* 文案≠印片题字 → 要画 */
+  st.opts.title='{note}';
+  var capSkip=L.plateHasText(g)&&!L.capWillDraw(g);    /* 同一句话 → 不重复 */
+  st.opts.title=kp.title; st.book.cap=kp.cap; st.book.layout=kp.layout; ph.note='';
 
   /* ⑤ 切到「干净照片」后，书页画面真的换了 */
   var before=hashPage(content[0].canvas);
@@ -297,7 +317,7 @@ const t10 = await b.evaluate(`(async function(){
   return JSON.stringify({ defArt:defArt, plateIsArt:(picked0===g.art),
     sameAsName:sameAsName, n:titles.length, uniqTitles:uniqTitles,
     sampleTitles:titles.slice(0,3), uniqPages:uniqPages, nPages:content.length,
-    capSkip:capSkip, plainUsed:plainUsed, plainIsClean:plainIsClean,
+    capSkip:capSkip, capDraw:capDraw, capBand:capBand, plainUsed:plainUsed, plainIsClean:plainIsClean,
     changed:(before!==after), before:before, after:after,
     resolve:L.resolveTokens('{name} · {nn}/{total} · {tpl}', st.photos[6]) });
 })()`);
@@ -309,10 +329,13 @@ chk(o10.sameAsName === o10.n && o10.uniqTitles === o10.n,
   o10.sameAsName + '/' + o10.n + ' 匹配 · ' + o10.uniqTitles + ' 种 · ' + JSON.stringify(o10.sampleTitles));
 chk(o10.uniqPages === o10.nPages && o10.nPages >= 20,
   'B29 每一页内容页画面互不相同（不是 28 页同一张）', o10.uniqPages + '/' + o10.nPages + ' 唯一');
-chk(o10.capSkip, 'B30 模版自带题字时书页不再重复画一遍图注（同一信息不出现两次）');
+chk(o10.capDraw === true && o10.capBand > 100,
+  'B30 文案与印片题字不是同一句话 → 书页必须真的画图注（出厂 opts.title={name} 时也是）',
+  'capWillDraw=' + o10.capDraw + ' 图注带差异=' + o10.capBand + ' 像素');
+chk(o10.capSkip, 'B30b 印片自己就写着那句话（opts.title 用 {note}）→ 不重复画（同一信息不出现两次）');
 chk(o10.plainUsed && o10.plainIsClean, 'B31 切到「干净照片」时书页/封面取的是 plain');
 chk(o10.changed, 'B32 切换书页画面真的重排了书页（画面像素变了）');
-chk(o10.resolve.indexOf('LUMEN 07') === 0 && o10.resolve.indexOf('07/28') > 0,
+chk(o10.resolve.indexOf('KADA 07') === 0 && o10.resolve.indexOf('07/28') > 0,
   'B33 占位符 {name}/{nn}/{total} 都能解', o10.resolve);
 
 /* ---------- ⑩ 老存档迁移：升级上来的人也必须看到修复 ----------
@@ -362,6 +385,47 @@ chk(o12.afterTpl && o12.backToFresh,
   'B37 改了某张照片的模版 → 判为过期；改回去 → 恢复新鲜', JSON.stringify(o12));
 chk(o12.afterOpts && o12.backAfterUndo,
   'B38 改了模版文字 → 判为过期（书里还是旧画面，得重出）');
+
+/* ---------- ⑫ 改名：老存档里的旧默认品牌值要迁成新名字，用户自己改过的一律不动 ---------- */
+await b.evaluate(`(function(){
+  localStorage.setItem('lumen.prefs.v1', JSON.stringify({
+    opts:{title:'{name}',sub:'{n} / {total}',corner:'NO.{n}',accent:'#e08a3c',font:'sans'},
+    book:{title:'光匣',author:'LUMEN STUDIO',spine:'LUMEN · 2026',
+          paper:'#fffdf8',ink:'#2b2620',layout:'mat',art:'tpl',
+          ratio:'3:4',num:true,spread:true,cap:'note',speed:2,coverIdx:0},
+    assign:{}
+  }));
+  return 1;
+})()`);
+await b.goto(FILE, 2600);
+await sleep(1200);
+const o13 = JSON.parse(await b.evaluate(`(function(){
+  var st=window.LUMEN.state;
+  return JSON.stringify({ot:st.opts.title,bt:st.book.title,ba:st.book.author,bs:st.book.spine,
+    alias:typeof window.KADA});
+})()`));
+chk(o13.bt === '咔哒书' && o13.ba === 'KADA STUDIO' && o13.bs === 'KADA · 2026',
+  'B39 老存档里等于旧默认值的书名/署名/书脊 → 迁成新品牌名', JSON.stringify(o13));
+chk(o13.ot === '{name}',
+  'B39c 印片题字(opts.title)不属于品牌字段，改名不许碰它', 'opts.title=' + o13.ot);
+chk(o13.alias === 'object', 'B39a 同时暴露 window.KADA（旧名 LUMEN 保留给老脚本）', 'KADA=' + o13.alias);
+
+/* 用户自己起的书名/署名不能被改名迁移改写 */
+await b.evaluate(`(function(){
+  var s=JSON.parse(localStorage.getItem('lumen.prefs.v1'));
+  s.book.title='我的宝宝相册'; s.book.author='妈妈'; s.book.spine='一本自己的书';
+  localStorage.setItem('lumen.prefs.v1', JSON.stringify(s));
+  return 1;
+})()`);
+await b.goto(FILE, 2600);
+await sleep(1200);
+const o14 = JSON.parse(await b.evaluate(`(function(){
+  var st=window.LUMEN.state;
+  return JSON.stringify({bt:st.book.title,ba:st.book.author,bs:st.book.spine});
+})()`));
+chk(o14.bt === '我的宝宝相册' && o14.ba === '妈妈' && o14.bs === '一本自己的书',
+  'B39b 用户自己起的书名/署名/书脊不被改名迁移覆盖', JSON.stringify(o14));
+
 
 const errs = await b.evaluate('JSON.stringify(window.__errs||[])');
 console.log('\n--- JS 异常: ' + (errs === '[]' ? 'none' : errs));

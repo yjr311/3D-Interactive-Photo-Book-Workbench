@@ -10,7 +10,7 @@ import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html
    否则 step() 里 `now = Math.max(ts, performance.now())` 会让真实时钟
    抢先推完动画，抓到的「落地帧」就不是真的落地帧（两次运行结果会不一致）。 */
 
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 const R = [];
 const ok = (n, c, extra = '') => R.push((c ? 'PASS' : '**FAIL**') + ' ' + n + (extra ? '  ' + extra : ''));
 
@@ -160,6 +160,58 @@ const blob = JSON.parse(await ev(`(function(){
 ok('③ 预览区固定黑印已移除', ['none', 'normal', '""'].indexOf(blob.before) >= 0, '::before content=' + blob.before);
 ok('③ 预览画布自带投影（替代黑印）',
   (await ev('getComputedStyle($("#previewCv")).boxShadow')).indexOf('rgba') >= 0);
+
+/* ④ 悬停书本下缘时翘起的「折角」必须落在书口边（外侧），不能落在书沟（中缝）
+   —— 折角锚点原先是 `right?spineX+pw:spineX`，左页那半边漏了 -pw，
+      于是悬停左页左下角时折角被画到书沟上，看着像右页内下角凭空翘起。 */
+const FOLD = `(function(){
+  BV.anim=null; BV.live=null; BV.cur=3;
+  BV.offT=BV.targetOff(); BV.off=BV.offT; BV.syncUI(); BV.layout();
+  var W=BV.cv.width, H=BV.cv.height;
+  function snap(){ return BV.ctx.getImageData(0,0,W,H).data; }
+  function bbox(mode){
+    BV.cornerOn=false; BV.cornerA=0; BV.draw(); var base=snap();
+    if(mode){ BV.cornerOn=true; BV.cornerSide=mode; BV.cornerA=1; }
+    BV.draw(); var d=snap();
+    var minX=1e9,maxX=-1,minY=1e9,maxY=-1,n=0;
+    for(var i=0;i<d.length;i+=4){
+      var t=Math.abs(d[i]-base[i])+Math.abs(d[i+1]-base[i+1])+Math.abs(d[i+2]-base[i+2]);
+      if(t>10){ n++; var p=i/4, xx=p%W, yy=(p-xx)/W;
+        if(xx<minX)minX=xx; if(xx>maxX)maxX=xx; if(yy<minY)minY=yy; if(yy>maxY)maxY=yy; }
+    }
+    return {n:n,minX:minX,maxX:maxX,minY:minY,maxY:maxY};
+  }
+  var out={ dpr:BV.dpr, spread:BV.spread, spineX:+BV.spineX.toFixed(2), pw:+BV.pw.toFixed(2),
+            left:bbox('l'), right:bbox('r') };
+  /* 反向对照：把左页锚点从「左页书口」还回「书沟」，复现旧缺陷。
+     只动 this.spineX（drawFold 里唯一的锚点来源），不动其它状态。 */
+  var orig=BV.drawFold;
+  BV.drawFold=function(c){ var o=this.spineX; this.spineX=o+this.pw; orig.call(this,c); this.spineX=o; };
+  out.buggy=bbox('l');
+  BV.drawFold=orig;
+  BV.cornerOn=false; BV.cornerA=0; BV.draw();
+  return JSON.stringify(out);
+})()`;
+
+const fd = JSON.parse(await ev(FOLD));
+{
+  const s = fd.dpr, pw = fd.pw * s, gut = fd.spineX * s;
+  const wantL = gut - pw, wantR = gut + pw;
+  const nearL = Math.abs(fd.left.minX - wantL) < pw * 0.06;
+  const nearR = Math.abs(fd.right.maxX - wantR) < pw * 0.06;
+  const narrow = (fd.left.maxX - fd.left.minX) < pw * 0.32 && (fd.right.maxX - fd.right.minX) < pw * 0.32;
+  const notGutter = fd.left.maxX < gut - pw * 0.05 && fd.right.minX > gut + pw * 0.05;
+  ok('④ 悬停折角落在书口边（外侧），没跑到书沟上',
+    fd.spread && fd.left.n > 200 && fd.right.n > 200 && nearL && nearR && narrow && notGutter,
+    '左 ' + fd.left.minX + '~' + fd.left.maxX + '（该≈' + Math.round(wantL) + '）' +
+    ' | 右 ' + fd.right.minX + '~' + fd.right.maxX + '（该≈' + Math.round(wantR) + '）' +
+    ' | 书沟=' + Math.round(gut));
+  /* 反向对照：旧写法必须被同一判据判为不合格 —— 否则这条断言是空转的 */
+  const buggyBad = !(fd.buggy.maxX < gut - pw * 0.05);
+  ok('④b 反向对照：把锚点改回书沟，同一判据确实会判不合格（断言有牙）', buggyBad,
+    '旧写法左折角 x∈[' + fd.buggy.minX + ',' + fd.buggy.maxX + '] 书沟=' + Math.round(gut));
+}
+
 
 const errors = b.errors.filter(e => !/favicon|net::ERR_FILE/.test(e));
 console.log(R.join('\n'));

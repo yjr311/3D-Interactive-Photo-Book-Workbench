@@ -3,7 +3,7 @@
    ② 版心底还剩多少留白（不能变成一条没人用的空洞）
    ③ 模版自带题字时，图注区确实是空的（没有重复文字） */
 import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html-in-browser/scripts/cdp.mjs';
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 const b = await launch({ port: 9462, windowSize: '1400,920' });
 await b.goto(FILE, 2600);
 await sleep(900);

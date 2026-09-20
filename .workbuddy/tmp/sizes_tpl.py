@@ -2,7 +2,7 @@
 """多尺寸检查：胶片带卡片是否完整落在 dock 内、选片条卡片是否落在 strip 内、是否有滚动溢出。"""
 import io, os, re, subprocess, sys
 
-SRC = r"C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/光匣-3D互动照片书.html"
+SRC = r"C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/咔哒书-3D互动照片书.html"
 CHROME = r"C:/Users/zz/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe"
 SIZES = ["1920x1080", "1600x1000", "1512x900", "1440x800", "1366x720", "1280x700", "1100x780", "900x700"]
 

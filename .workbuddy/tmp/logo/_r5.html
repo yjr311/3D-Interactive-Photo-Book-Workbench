@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>咔哒书 · 第五轮</title>
+<style>
+:root{ --bg:#08090c; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+  --text:#f2efe9; --muted:#8d8f99; --accent:#f0a63c; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:13px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;padding:22px 26px 34px}
+h2{font-size:12px;letter-spacing:.2em;color:var(--muted);font-weight:600;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 12px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:10px}
+.row{display:flex;align-items:flex-end;gap:13px}
+.cap{font-size:11px;color:var(--muted);text-align:center}
+.cap b{display:block;color:var(--text);font-size:12.5px;font-weight:600;margin-bottom:1px}
+.sz{font-size:9px;color:var(--muted);margin-top:-1px}
+.mk{color:var(--accent)}
+</style></head><body>
+<h2>第五轮 · 有机化微调（96/72/56/40/32/24/20/16px）</h2>
+<div class="grid" id="grid"></div>
+
+<script>
+const k = (v, s) => +(v * s).toFixed(2);
+function book(cx, cy, s, o = {}) {
+  const g = o.gap ?? 1.05, W = 13.7, T = o.top ?? 9.6, B = o.bot ?? 8.4;
+  const dip = o.dip ?? 4.2, bulge = o.bulge ?? 0, rad = o.rad ?? 0;
+  const gx = o.gx ?? 0.26;                       // 页顶/底向中缝收的握笔量
+  const pL = cx - g, pR = cx + g;
+  const L = `M${k(pL, 1)} ${k(cy + B, s)}`
+    + `C${k(cx - W * .30, s)} ${k(cy + B - dip * .55, s)} ${k(cx - W * .70, s)} ${k(cy + B - dip, s)} ${k(cx - W, s)} ${k(cy + B - dip, s)}`
+    + (bulge ? `C${k(cx - W - bulge, s)} ${k(cy + B - dip - 3, s)} ${k(cx - W - bulge, s)} ${k(cy - T + 3, s)} ` : 'V')
+    + `${k(cx - W, s)} ${k(cy - T, s)}`
+    + `C${k(cx - W * .70, s)} ${k(cy - T, s)} ${k(cx - W * .30, s)} ${k(cy - T + dip * .5, s)} ${k(pL, 1)} ${k(cy - T + dip * .5, s)}Z`;
+  const R = `M${k(pR, 1)} ${k(cy + B, s)}`
+    + `C${k(cx + W * .30, s)} ${k(cy + B - dip * .55, s)} ${k(cx + W * .70, s)} ${k(cy + B - dip, s)} ${k(cx + W, s)} ${k(cy + B - dip, s)}`
+    + (bulge ? `C${k(cx + W + bulge, s)} ${k(cy + B - dip - 3, s)} ${k(cx + W + bulge, s)} ${k(cy - T + 3, s)} ` : 'V')
+    + `${k(cx + W, s)} ${k(cy - T, s)}`
+    + `C${k(cx + W * .70, s)} ${k(cy - T, s)} ${k(cx + W * .30, s)} ${k(cy - T + dip * .5, s)} ${k(pR, 1)} ${k(cy - T + dip * .5, s)}Z`;
+  return { L, R, both: L + R };
+}
+const sq = (x, y, w, h, r) => `M${x + r} ${y} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r}`
+  + ` v${h - 2 * r} a${r} ${r} 0 0 1 ${-r} ${r} h${-(w - 2 * r)}`
+  + ` a${r} ${r} 0 0 1 ${-r} ${-r} v${-(h - 2 * r)} a${r} ${r} 0 0 1 ${r} ${-r} Z`;
+const SQ = (m, r) => sq(24 - m, 24 - m, m * 2, m * 2, r);
+const KO = (box, bk) => `<path fill="currentColor" fill-rule="evenodd" d="${box}${bk}"/>`;
+
+const V = {};
+V['I1 基准（页高9.6）'] = `<g class="mk">${KO(SQ(20.8, 12.9), book(24, 24.4, 1.13).both)}</g>`;
+V['I2 页外缘外鼓 1.1'] = `<g class="mk">${KO(SQ(20.8, 12.9), book(24, 24.4, 1.13, { bulge: 1.1 }).both)}</g>`;
+V['I3 页外缘外鼓 1.8'] = `<g class="mk">${KO(SQ(20.8, 12.9), book(24, 24.4, 1.13, { bulge: 1.8 }).both)}</g>`;
+V['I4 外鼓1.1 + 中缝更深'] = `<g class="mk">${KO(SQ(20.8, 12.9), book(24, 24.4, 1.13, { bulge: 1.1, dip: 5.2 }).both)}</g>`;
+V['I5 外鼓1.1 + 书略小'] = `<g class="mk">${KO(SQ(21.4, 13.4), book(24, 24.4, 1.06, { bulge: 1.1 }).both)}</g>`;
+V['I6 外鼓1.1 + 页更矮(8.4)'] = `<g class="mk">${KO(SQ(20.8, 12.9), book(24, 24.4, 1.24, { bulge: 1.1, top: 8.4 }).both)}</g>`;
+
+const grid = document.getElementById('grid');
+for (const [name, inner] of Object.entries(V)) {
+  const c = document.createElement('div'); c.className = 'card';
+  c.innerHTML = `<div class="row">` +
+    [96, 72, 56, 40, 32, 24, 20, 16].map(p => `<svg width="${p}" height="${p}" viewBox="0 0 48 48">${inner}</svg>`).join('') +
+    `</div><div class="cap"><b>${name}</b><div class="sz">96 · 72 · 56 · 40 · 32 · 24 · 20 · 16</div></div>`;
+  grid.appendChild(c);
+}
+</script>
+</body></html>

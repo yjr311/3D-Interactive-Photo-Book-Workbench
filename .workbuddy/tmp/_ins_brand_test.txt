@@ -1,0 +1,39 @@
+
+/* ---------- ⑫ 改名：老存档里的旧默认品牌值要迁成新名字，用户自己改过的一律不动 ---------- */
+await b.evaluate(`(function(){
+  localStorage.setItem('lumen.prefs.v1', JSON.stringify({
+    opts:{title:'光匣',sub:'A COLLECTION OF MOMENTS',author:'LUMEN STUDIO',
+          spine:'LUMEN · 2026',corner:'NO.{n}',accent:'#e08a3c',font:'sans'},
+    book:{title:'光匣',paper:'#fffdf8',ink:'#2b2620',layout:'mat',art:'tpl',
+          ratio:'3:4',num:true,spread:true,cap:'note',speed:2,coverIdx:0},
+    assign:{}
+  }));
+  return 1;
+})()`);
+await b.goto(FILE, 2600);
+await sleep(1200);
+const o13 = JSON.parse(await b.evaluate(`(function(){
+  var st=window.LUMEN.state;
+  return JSON.stringify({t:st.opts.title,a:st.opts.author,sp:st.opts.spine,bt:st.book.title,
+    alias:typeof window.KADA});
+})()`));
+chk(o13.t === '咔哒书' && o13.bt === '咔哒书' && o13.a === 'KADA STUDIO' && o13.sp === 'KADA · 2026',
+  'B39 老存档里等于旧默认值的书名/署名/书脊 → 迁成新品牌名', JSON.stringify(o13));
+chk(o13.alias === 'object', 'B39a 同时暴露 window.KADA（旧名 LUMEN 保留给老脚本）', 'KADA=' + o13.alias);
+
+/* 用户自己起的书名/署名不能被改名迁移改写 */
+await b.evaluate(`(function(){
+  var s=JSON.parse(localStorage.getItem('lumen.prefs.v1'));
+  s.book.title='我的宝宝相册'; s.opts.author='妈妈'; s.opts.spine='一本自己的书';
+  localStorage.setItem('lumen.prefs.v1', JSON.stringify(s));
+  return 1;
+})()`);
+await b.goto(FILE, 2600);
+await sleep(1200);
+const o14 = JSON.parse(await b.evaluate(`(function(){
+  var st=window.LUMEN.state;
+  return JSON.stringify({bt:st.book.title,a:st.opts.author,sp:st.opts.spine});
+})()`));
+chk(o14.bt === '我的宝宝相册' && o14.a === '妈妈' && o14.sp === '一本自己的书',
+  'B39b 用户自己起的书名/署名/书脊不被改名迁移覆盖', JSON.stringify(o14));
+

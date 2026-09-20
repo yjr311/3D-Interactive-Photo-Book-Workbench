@@ -1,0 +1,72 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>16px 可读性微调</title>
+<style>
+ body{margin:0;background:#0e1015;color:#e9e6e0;font:12.5px/1.6 "Microsoft YaHei",sans-serif}
+ .wrap{padding:16px}
+ .row{display:flex;gap:20px;align-items:flex-end;border-bottom:1px dashed #2a2f3a;padding:14px 4px}
+ .row h3{width:180px;font-size:12.5px;margin:0;color:#f0a63c;flex:none}
+ .cell{display:flex;flex-direction:column;align-items:center;gap:5px}
+ .cell span{font-size:10.5px;color:#7f8794}
+ img.pix{image-rendering:pixelated}
+</style></head><body><div class="wrap" id="w"></div>
+<script>
+const INK='#4a2708', FA='#eec9a4', FB='#d7a578';
+const OPEN='M4.69 12.42C11.66 10.55 19.25 12.42 24 16.16C28.75 12.18 36.34 10.43 43.31 12.07C44.15 17.68 43.94 26.22 42.57 31.72C35.82 32.19 28.75 33.95 24 35.35C19.15 33.83 12.08 32.42 5.33 31.25C3.53 24.94 3.85 17.1 4.69 12.42Z';
+const PL='M9.86 21.19C13.24 20.26 16.51 20.61 19.15 21.54';
+const PR='M28.85 21.54C31.49 20.61 34.76 20.26 38.14 21.19';
+
+function mk(v){
+  const SW=3.4;
+  const inner=(()=>{
+    if(v==='cur') return `
+      <g stroke="${INK}" stroke-width="1.9" stroke-linecap="round" fill="none" opacity=".5">
+        <path d="${PL}"/><path d="${PR}"/></g>
+      <path d="M24 17.21C23.58 22.71 23.58 28.91 24 34.76" stroke="${INK}" stroke-width="1.9"
+        stroke-linecap="round" fill="none" opacity=".55"/>`;
+    if(v==='gut') return `
+      <g stroke="${INK}" stroke-width="1.9" stroke-linecap="round" fill="none" opacity=".5">
+        <path d="${PL}"/><path d="${PR}"/></g>
+      <path d="M24 17.21C23.58 22.71 23.58 28.91 24 34.76" stroke="${INK}" stroke-width="2.7"
+        stroke-linecap="round" fill="none" opacity="1"/>`;
+    if(v==='gutwide') return `
+      <g stroke="${INK}" stroke-width="2.1" stroke-linecap="round" fill="none" opacity=".55">
+        <path d="${PL}"/><path d="${PR}"/></g>
+      <path d="M24 17.21C23.58 22.71 23.58 28.91 24 34.76" stroke="${INK}" stroke-width="2.3"
+        stroke-linecap="round" fill="none" opacity="1"/>`;
+    return '';
+  })();
+  return `<g transform="rotate(-13 24 24)"><g transform="translate(0 1.05)">
+    <path d="${OPEN}" fill="url(#g)" stroke="${INK}" stroke-width="${SW}"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    <g clip-path="url(#c)"><path d="${OPEN}" fill="none" stroke="${INK}"
+      stroke-width="1.1" opacity=".26" transform="translate(.55 -.6)"/></g>
+    ${inner}</g></g>`;
+}
+function svg(v,px){return `<svg viewBox="0 0 48 48" width="${px}" height="${px}">
+  <defs><linearGradient id="g" x1="0" y1="0" x2=".25" y2="1">
+    <stop offset="0" stop-color="${FA}"/><stop offset="1" stop-color="${FB}"/></linearGradient>
+  <clipPath id="c"><path d="${OPEN}" transform="translate(0 1.05)"/></clipPath></defs>${mk(v)}</svg>`;}
+
+const VS=[['cur','现状 · 中缝 .55'],['gut','中缝实心 1.0'],['gutwide','中缝加粗 2.3']];
+let h='';
+for(const [v,lab] of VS){
+  h+=`<div class="row"><h3>${lab}</h3>`;
+  for(const p of [140,64,32,29,24,16]) h+=`<div class="cell">${svg(v,p)}<span>${p}</span></div>`;
+  h+=`<div class="cell"><img class="pix" data-src="${v}" width="128" height="128"><span>16px 放大8×</span></div>`;
+  h+='</div>';
+}
+document.getElementById('w').innerHTML=h;
+
+/* 逐行生成 16px 真实像素图 */
+function px16(holder,v){
+  const c=document.createElement('canvas'); c.width=16;c.height=16;
+  const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  const img=new Image();
+  img.onload=()=>{ ctx.drawImage(img,0,0,16,16);
+    const z=document.createElement('canvas'); z.width=16;z.height=16;
+    z.getContext('2d').drawImage(c,0,0);
+    holder.src=z.toDataURL(); };
+  const svgStr=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">${mk(v)}</svg>`;
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgStr)));
+}
+document.querySelectorAll('img.pix').forEach(el=>px16(el,el.dataset.src));
+</script></body></html>

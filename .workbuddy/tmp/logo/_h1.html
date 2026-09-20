@@ -1,0 +1,72 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>手绘方向探索</title>
+<style>
+ body{margin:0;background:#0e1015;color:#e9e6e0;font:13px/1.6 "Microsoft YaHei",sans-serif}
+ .wrap{padding:20px}
+ .row{display:flex;gap:26px;align-items:flex-end;border-bottom:1px dashed #2a2f3a;padding:18px 6px}
+ .row h3{width:150px;font-size:13px;margin:0;color:#f0a63c;flex:none}
+ .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
+ .cell span{font-size:11px;color:#7f8794}
+ .light{background:#f4f2ed;color:#241f18}
+ .light .cell span{color:#8a8377}
+</style></head><body><div class="wrap" id="w"></div>
+<script>
+const INK='#43230a', FILL='#f7ddc4', SHADE='#e0b68f', SPARK='#ef9f2e';
+
+/* 摊开的书：并集轮廓（手绘：顶点刻意不对称） */
+const OPEN_BODY='M5.9 13.9C12.4 12.6 19.6 14 24 17.2C28.4 14 35.6 12.6 42.1 13.9C42.9 18 43.1 25.6 41.8 30.4C35.4 30.9 28.6 32.4 24 33.6C19.4 32.4 12.6 30.9 6.2 30.4C4.9 25.6 5.1 18 5.9 13.9Z';
+const OPEN_GUT='M24 17.6C23.5 22.8 23.5 28.2 24 33.3';
+const OPEN_LN=['M9.4 20.6C12.6 19.9 16.4 20.2 19.6 21','M9.9 25C13.1 24.4 16.6 24.6 19.4 25.3',
+               'M28.4 21C31.6 20.2 35.4 19.9 38.6 20.6','M28.6 25.3C31.4 24.6 34.9 24.4 38.1 25'];
+const OPEN_SHADE='M6.2 27C14 29.6 20 31.6 24 33.4C28 31.6 34 29.6 41.8 27C42.4 28.6 42.2 29.7 41.8 30.4C35.4 30.9 28.6 32.4 24 33.6C19.4 32.4 12.6 30.9 6.2 30.4C5.8 29.4 5.9 28.2 6.2 27Z';
+
+/* 合上的书 + 搭扣：轮廓（右侧带一个圆鼓包＝咔哒扣） */
+const CLOSED_BODY='M12.6 14.4C20 12.9 29 12.9 36.2 14.6C36.9 21.6 36.9 29.4 35.9 36.3C28.8 37.9 19.6 37.9 12.2 36.1C11.3 29.2 11.4 21.6 12.6 14.4Z';
+const CLOSED_SPINE='M16.8 14.1C16 21.6 16 29.4 16.6 36.5';
+
+/* 书签带（合上的书 + 垂下的丝带） */
+const RIBBON='M20.4 36.4C20 39.6 20.2 42 20.8 43.6C22.2 42.6 23.4 42.6 24.6 43.6C25.2 42 25.4 39.4 25 36.2';
+
+function svgA(){return `
+ <path d="${OPEN_BODY}" fill="${FILL}" stroke="${INK}" stroke-width="5.4" stroke-linejoin="round"/>
+ <path d="${OPEN_SHADE}" fill="${SHADE}" opacity=".85"/>
+ <g stroke="${INK}" stroke-width="2.3" stroke-linecap="round" fill="none" opacity=".62">
+   ${OPEN_LN.map(d=>`<path d="${d}"/>`).join('')}
+ </g>
+ <path d="${OPEN_GUT}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".75"/>`;}
+
+function svgB(){return `
+ <path d="${CLOSED_BODY}" fill="${FILL}" stroke="${INK}" stroke-width="5.4" stroke-linejoin="round"/>
+ <circle cx="37.9" cy="25.6" r="5" fill="${FILL}" stroke="${INK}" stroke-width="4.4"/>
+ <circle cx="37.9" cy="25.6" r="1.7" fill="${INK}"/>
+ <path d="${CLOSED_SPINE}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".7"/>`;}
+
+function svgC(){return `
+ <path d="${CLOSED_BODY}" fill="${FILL}" stroke="${INK}" stroke-width="5.4" stroke-linejoin="round"/>
+ <path d="${CLOSED_SPINE}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".7"/>
+ <path d="${RIBBON}" fill="${SPARK}" stroke="${INK}" stroke-width="4.4" stroke-linejoin="round"/>`;}
+
+function svgD(){return `
+ <path d="${OPEN_BODY}" fill="${FILL}" stroke="${INK}" stroke-width="5.4" stroke-linejoin="round"/>
+ <path d="${OPEN_SHADE}" fill="${SHADE}" opacity=".85"/>
+ <path d="M36.6 6.2C38.4 9.4 40.2 10.6 43.4 11.2C40.2 11.8 38.4 13 36.6 16.2C34.8 13 33 11.8 29.8 11.2C33 10.6 34.8 9.4 36.6 6.2Z"
+       fill="${SPARK}" stroke="${INK}" stroke-width="3.6" stroke-linejoin="round"/>
+ <path d="${OPEN_GUT}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".75"/>`;}
+
+const MK={A:svgA,B:svgB,C:svgC,D:svgD};
+const NAMES={A:'A 摊开小书',B:'B 合上小书+搭扣',C:'C 合上小书+书签带',D:'D 摊开小书+咔哒火花'};
+
+function mk(k,px){return `<svg viewBox="0 0 48 48" width="${px}" height="${px}">${MK[k]()}</svg>`;}
+
+let h='';
+for(const k of ['A','B','C','D']){
+  h+=`<div class="row"><h3>${NAMES[k]}</h3>`;
+  h+=`<div class="cell">${mk(k,168)}<span>168</span></div>`;
+  for(const p of [96,64,48,32,24,16]) h+=`<div class="cell">${mk(k,p)}<span>${p}</span></div>`;
+  h+=`</div>`;
+}
+// 浅底
+h+='<div class="row light" style="background:#f4f2ed">';
+for(const k of ['A','B','C','D']) h+=`<div class="cell">${mk(k,64)}<span>${k} 浅底</span></div>`;
+h+='</div>';
+document.getElementById('w').innerHTML=h;
+</script></body></html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>咔哒书 · 第二轮</title>
+<style>
+:root{ --bg:#08090c; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+  --text:#f2efe9; --muted:#8d8f99; --accent:#f0a63c; }
+.mk{color:var(--accent);fill:currentColor}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:13px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px 28px 36px}
+h2{font-size:12px;letter-spacing:.2em;color:var(--muted);font-weight:600;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 10px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:9px}
+.big{width:92px;height:92px;display:block}
+.sizes{display:flex;align-items:center;gap:11px}
+.cap{font-size:11px;color:var(--muted);text-align:center}
+.cap b{display:block;color:var(--text);font-size:12px;font-weight:600;margin-bottom:1px}
+.sep{height:1px;background:var(--line);margin:26px 0 18px}
+
+/* ---- 顶栏锁排实况 ---- */
+.top{height:52px;display:flex;align-items:center;gap:16px;padding:0 18px;border-radius:12px;
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.035),transparent),#0b0d11;
+  margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:9px;flex:none}
+.brand .ic{width:29px;height:29px;display:block;flex:none}
+.brand .tx b{display:block;font-size:14.5px;letter-spacing:.06em;font-weight:600;line-height:1.2}
+.brand .tx i{display:block;font-style:normal;font-size:9px;letter-spacing:.34em;color:var(--muted);margin-top:-2px}
+.steps{display:flex;gap:2px;margin-left:10px;flex:1}
+.steps s{text-decoration:none;font-size:12.5px;color:var(--muted);padding:6px 12px;border-radius:999px}
+.steps s.on{color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.ctxlab{font-size:11px;color:var(--muted);margin:2px 0 6px}
+.light{background:#f7f5f1;border-color:#e2ded6}
+.light .brand .tx b{color:#221d15}
+.light .brand .tx i{color:#8a8478}
+.light .steps s{color:#8a8478}
+.light .steps s.on{color:#221d15;background:rgba(0,0,0,.05);border-color:#e2ded6}
+</style></head><body>
+<h2>第二轮候选 · 92px / 24px / 16px</h2>
+<div class="grid" id="grid"></div>
+
+<div class="sep"></div>
+<h2>放进顶栏看实况（深色 / 浅色）</h2>
+<div id="locks"></div>
+
+<script>
+/* 摊开的书（正视）：两页向中缝下倾 */
+function book(cx, cy, s, o = {}) {
+  const k = v => +(v * s).toFixed(2);   // 必须是数值：字符串会和 cy 拼成 "25.48.57" 这种废路径
+  const dy = o.dy || 0, g = o.gap ?? 0.6;
+  const L = `M${cx - g} ${cy + k(8.4)} C${cx - k(4.1)} ${cy + k(5.2)} ${cx - k(9.1)} ${cy + k(3.6)} ${cx - k(13.7)} ${cy + k(3.6)} V${cy - k(8.4)} c${k(4.6)} 0 ${k(9.6)} ${k(1.6)} ${k(13.7)} ${k(4.8)} Z`;
+  const R = `M${cx + g} ${cy + k(8.4)} c${k(4.1)} ${-k(3.2)} ${k(9.1)} ${-k(4.8)} ${k(13.7)} ${-k(4.8)} V${cy - k(8.4)} c${-k(4.6)} 0 ${-k(9.6)} ${k(1.6)} ${-k(13.7)} ${k(4.8)} Z`;
+  return { L, R, both: L + R };
+}
+const sq = (x, y, w, h, r) => `M${x + r} ${y} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r} v${h - 2 * r} a${r} ${r} 0 0 1 ${-r} ${r} h${-(w - 2 * r)} a${r} ${r} 0 0 1 ${-r} ${-r} v${-(h - 2 * r)} a${r} ${r} 0 0 1 ${r} ${-r} Z`;
+
+/* 通用外壳：grad = 用「白/黑叠加」伪造材质渐变（不写死色号，任何 accent 都能用） */
+const S = {
+  'F1 方块 · 挖空书': `
+    <defs><mask id="m1"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="#fff"/>
+      <g fill="#000">${book(24,25.4,1.02).both}</g></mask></defs>
+    <g class="mk">
+      <path d="${sq(3.5,3.5,41,41,13.5)}" mask="url(#m1)"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="url(#shine)" opacity=".9" mask="url(#m1)"/>
+    </g>`,
+
+  'F2 方块 · 挖空书 + 闪光': `
+    <defs><mask id="m2"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="#fff"/>
+      <g fill="#000">${book(24,26,1.0).both}</g></mask></defs>
+    <g class="mk">
+      <path d="${sq(3.5,3.5,41,41,13.5)}" mask="url(#m2)"/>
+      <path d="M39.6 5.2l1.05 3.05L43.7 9.3l-3.05 1.05L39.6 13.4l-1.05-3.05L35.5 9.3l3.05-1.05Z"/>
+    </g>`,
+
+  'F3 圆环 + 书（放大）': `
+    <g class="mk" fill="none" stroke="currentColor" stroke-width="2.7">
+      <circle cx="24" cy="24" r="20.8"/></g>
+    <g class="mk" fill="currentColor">${book(24,24.6,1.12).both}</g>`,
+
+  'F4 圆环(顶部缺口) + 书': `
+    <g class="mk" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+      <path d="M27.6 4.05A20.3 20.3 0 1 1 20.4 4.05"/></g>
+    <g class="mk" fill="currentColor">${book(24,25.0,1.10).both}</g>`,
+
+  'F5 书即光圈': `
+    <defs><clipPath id="c5"><circle cx="24" cy="24" r="20.6"/></clipPath></defs>
+    <g class="mk" fill="none" stroke="currentColor" stroke-width="2.7">
+      <circle cx="24" cy="24" r="20.6"/></g>
+    <g class="mk" fill="currentColor" clip-path="url(#c5)">${book(24,26.4,1.5).both}</g>`,
+
+  'F6 方块 · 挖空书 + 底弧': `
+    <defs><mask id="m6"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="#fff"/>
+      <g fill="#000">${book(24,23.4,1.06).both}</g></mask></defs>
+    <g class="mk"><path d="${sq(3.5,3.5,41,41,13.5)}" mask="url(#m6)"/></g>`,
+
+  'F7 方块 · 亮色书（非挖空）': `
+    <g class="mk"><path d="${sq(3.5,3.5,41,41,13.5)}"/></g>
+    <g><path d="${book(24,25.4,1.02).both}" fill="#1a1206" opacity=".82"/></g>`,
+
+  'F8 圆角方 · 双页错开': `
+    <defs><mask id="m8"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="#fff"/>
+      <path d="M14 13h9.5a6 6 0 0 1 6 6v16H14Z" fill="#000"/>
+      <path d="M25.5 13H34a6 6 0 0 1 0 0v22h-8.5Z" fill="#000"/></mask></defs>
+    <g class="mk"><path d="${sq(3.5,3.5,41,41,13.5)}" mask="url(#m8)"/></g>`,
+
+  'F9 方块 · 挖空书 + 光晕': `
+    <defs><mask id="m9"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(3.5,3.5,41,41,13.5)}" fill="#fff"/>
+      <g fill="#000">${book(24,25.4,1.02).both}</g></mask></defs>
+    <g class="mk"><path d="${sq(3.5,3.5,41,41,13.5)}" mask="url(#m9)"/></g>
+    <circle class="mk" cx="24" cy="24" r="23" fill="none" stroke="currentColor" stroke-width="1" opacity=".28"/>`,
+
+  'F10 方块 · 挖空书（更粗）': `
+    <defs><mask id="m10"><rect width="48" height="48" fill="#000"/>
+      <path d="${sq(2.5,2.5,43,43,14.5)}" fill="#fff"/>
+      <g fill="#000">${book(24,25.2,1.16).both}</g></mask></defs>
+    <g class="mk"><path d="${sq(2.5,2.5,43,43,14.5)}" mask="url(#m10)"/></g>`,
+};
+
+const defs = `<defs><linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff" stop-opacity=".26"/>
+  <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+  <stop offset="1" stop-color="#000" stop-opacity=".20"/></linearGradient></defs>`;
+
+const grid = document.getElementById('grid');
+for (const [name, inner] of Object.entries(S)) {
+  const c = document.createElement('div'); c.className = 'card';
+  c.innerHTML = `<svg class="big" viewBox="0 0 48 48">${defs}${inner}</svg>
+    <div class="sizes">
+      <svg width="24" height="24" viewBox="0 0 48 48">${defs}${inner}</svg>
+      <svg width="16" height="16" viewBox="0 0 48 48">${defs}${inner}</svg>
+      <svg width="40" height="40" viewBox="0 0 48 48" style="color:#6cc7e8">${defs}${inner}</svg>
+    </div>
+    <div class="cap"><b>${name}</b></div>`;
+  grid.appendChild(c);
+}
+
+/* ---- 顶栏锁排：拿 F1 / F3 / F4 三种图形各排一遍 ---- */
+const ICONS = { 'F1 方块挖空书': S['F1 方块 · 挖空书'], 'F3 圆环+书': S['F3 圆环 + 书（放大）'],
+  'F4 圆环缺口+书': S['F4 圆环(顶部缺口) + 书'] };
+const LOCKS = [];
+for (const [n, inner] of Object.entries(ICONS)) {
+  LOCKS.push(`
+  <div class="ctxlab">${n}</div>
+  <div class="top"><div class="brand">
+      <svg class="ic" viewBox="0 0 48 48">${defs}${inner}</svg>
+      <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div>
+  </div>
+  <div class="top light"><div class="brand">
+      <svg class="ic" viewBox="0 0 48 48">${defs}${inner}</svg>
+      <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div>
+  </div>`);
+}
+document.getElementById('locks').innerHTML = LOCKS.join('');
+</script>
+</body></html>

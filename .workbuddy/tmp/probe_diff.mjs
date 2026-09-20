@@ -1,7 +1,7 @@
 import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html-in-browser/scripts/cdp.mjs';
 
 /* 落地前后一帧的差分图：定位残余亮度差到底出在画面的哪一块 */
-const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%85%89%E5%8C%A3-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
+const FILE = 'file:///C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/%E5%92%94%E5%93%92%E4%B9%A6-3D%E4%BA%92%E5%8A%A8%E7%85%A7%E7%89%87%E4%B9%A6.html';
 const b = await launch({ port: 9393, windowSize: '1512,900' });
 await b.goto(FILE, 1200);
 const ev = (x) => b.evaluate(x);

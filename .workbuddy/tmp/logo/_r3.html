@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>咔哒书 · 第三轮</title>
+<style>
+:root{ --bg:#08090c; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+  --text:#f2efe9; --muted:#8d8f99; --accent:#f0a63c; --accent-ink:#1a1206; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:13px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px 28px 36px}
+h2{font-size:12px;letter-spacing:.2em;color:var(--muted);font-weight:600;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 10px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:9px}
+.big{width:92px;height:92px;display:block}
+.sizes{display:flex;align-items:center;gap:11px}
+.cap{font-size:11px;color:var(--muted);text-align:center}
+.cap b{display:block;color:var(--text);font-size:12px;font-weight:600;margin-bottom:1px}
+.sep{height:1px;background:var(--line);margin:26px 0 18px}
+.mk{color:var(--accent)}
+.top{height:52px;display:flex;align-items:center;gap:16px;padding:0 18px;border-radius:12px;
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.035),transparent),#0b0d11;margin-bottom:10px}
+.brand{display:flex;align-items:center;gap:9px;flex:none}
+.brand .ic{width:29px;height:29px;display:block;flex:none}
+.brand .tx b{display:block;font-size:14.5px;letter-spacing:.06em;font-weight:600;line-height:1.2}
+.brand .tx i{display:block;font-style:normal;font-size:9px;letter-spacing:.34em;color:var(--muted);margin-top:-2px}
+.steps{display:flex;gap:2px;margin-left:10px;flex:1}
+.steps s{text-decoration:none;font-size:12.5px;color:var(--muted);padding:6px 12px;border-radius:999px}
+.steps s.on{color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.light{background:#f7f5f1;border-color:#e2ded6}
+.light .brand .tx b{color:#221d15} .light .brand .tx i{color:#8a8478}
+.light .steps s{color:#8a8478} .light .steps s.on{color:#221d15;background:rgba(0,0,0,.05);border-color:#e2ded6}
+.ctxlab{font-size:11px;color:var(--muted);margin:10px 0 6px}
+</style></head><body>
+<h2>第三轮 · 92 / 24 / 16px（琥珀金；最右 40px 换成薄荷青看换色）</h2>
+<div class="grid" id="grid"></div>
+<div class="sep"></div>
+<h2>顶栏实况</h2>
+<div id="locks"></div>
+
+<script>
+const k = (v, s) => +(v * s).toFixed(2);
+/* 摊开的书：两页向中缝下倾。返回 L / R 两个子路径（供 evenodd 挖空用） */
+function book(cx, cy, s, gap = 0.9) {
+  const L = `M${k(cx - gap, 1)} ${k(cy + 8.4, s)}`
+    + `C${k(cx - 4.2, s)} ${k(cy + 5.2, s)} ${k(cx - 9.2, s)} ${k(cy + 3.6, s)} ${k(cx - 13.7, s)} ${k(cy + 3.6, s)}`
+    + `V${k(cy - 8.2, s)}`
+    + `C${k(cx - 9.2, s)} ${k(cy - 8.2, s)} ${k(cx - 4.2, s)} ${k(cy - 6.6, s)} ${k(cx - gap, 1)} ${k(cy - 3.4, s)}Z`;
+  const R = `M${k(cx + gap, 1)} ${k(cy + 8.4, s)}`
+    + `C${k(cx + 4.2, s)} ${k(cy + 5.2, s)} ${k(cx + 9.2, s)} ${k(cy + 3.6, s)} ${k(cx + 13.7, s)} ${k(cy + 3.6, s)}`
+    + `V${k(cy - 8.2, s)}`
+    + `C${k(cx + 9.2, s)} ${k(cy - 8.2, s)} ${k(cx + 4.2, s)} ${k(cy - 6.6, s)} ${k(cx + gap, 1)} ${k(cy - 3.4, s)}Z`;
+  return { L, R, both: L + R };
+}
+const sq = (x, y, w, h, r) => `M${x + r} ${y} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r}`
+  + ` v${h - 2 * r} a${r} ${r} 0 0 1 ${-r} ${r} h${-(w - 2 * r)}`
+  + ` a${r} ${r} 0 0 1 ${-r} ${-r} v${-(h - 2 * r)} a${r} ${r} 0 0 1 ${r} ${-r} Z`;
+
+const V = {};
+/* 挖空（evenodd 单路径：方形 + 书的子路径 → 书成为镂空） */
+const KO = (box, bk) => `<path fill="currentColor" fill-rule="evenodd" d="${box}${bk}"/>`;
+const SQ = (m) => sq(48 / 2 - m, 48 / 2 - m, m * 2, m * 2, m * 0.62);
+
+V['G1 方块·挖空书'] = `<g class="mk">${KO(SQ(20.8), book(24, 25.4, 1.02).both)}</g>`;
+V['G2 方块·挖空书+闪光'] = `<g class="mk">${KO(SQ(20.8), book(24, 26.2, 0.98).both)}
+  <path fill="currentColor" d="M39.4 3.6l1.2 3.5 3.5 1.2-3.5 1.2-1.2 3.5-1.2-3.5-3.5-1.2 3.5-1.2Z"/></g>`;
+V['G3 圆环+书'] = `<g class="mk"><circle cx="24" cy="24" r="20.8" fill="none" stroke="currentColor" stroke-width="2.7"/>
+  <path fill="currentColor" d="${book(24, 24.6, 1.12).both}"/></g>`;
+V['G4 圆环(顶缺口)+书'] = `<g class="mk">
+  <path d="M27.2 3.95A20.3 20.3 0 1 1 20.8 3.95" fill="none" stroke="currentColor" stroke-width="2.9" stroke-linecap="round"/>
+  <path fill="currentColor" d="${book(24, 25.2, 1.10).both}"/></g>`;
+V['G5 书即光圈'] = `<g class="mk">
+  <circle cx="24" cy="24" r="20.7" fill="none" stroke="currentColor" stroke-width="2.7"/>
+  <g clip-path="url(#c5)"><path fill="currentColor" d="${book(24, 27.2, 1.62).both}"/></g>
+  <clipPath id="c5"><circle cx="24" cy="24" r="20.0"/></clipPath></g>`;
+V['G6 方块·挖空书(更大)'] = `<g class="mk">${KO(SQ(21.8), book(24, 25.0, 1.16).both)}</g>`;
+V['G7 方块·书(亮色双色)'] = `<g class="mk"><path fill="currentColor" d="${SQ(20.8)}"/>
+  <path fill="#1a1206" opacity=".80" d="${book(24, 25.4, 1.02).both}"/></g>`;
+V['G8 方块·折角页+书'] = `<g class="mk">
+  <path fill="currentColor" fill-rule="evenodd" d="${sq(3.2, 3.2, 41.6, 41.6, 13.2)}${book(24, 22.6, 0.9).both}"/></g>`;
+
+const grid = document.getElementById('grid');
+for (const [name, inner] of Object.entries(V)) {
+  const c = document.createElement('div'); c.className = 'card';
+  c.innerHTML = `<svg class="big" viewBox="0 0 48 48">${inner}</svg>
+    <div class="sizes"><svg width="24" height="24" viewBox="0 0 48 48">${inner}</svg>
+      <svg width="16" height="16" viewBox="0 0 48 48">${inner}</svg>
+      <svg width="40" height="40" viewBox="0 0 48 48" style="--accent:#5ec9b4">${inner}</svg></div>
+    <div class="cap"><b>${name}</b></div>`;
+  grid.appendChild(c);
+}
+const PICK = { 'G1': V['G1 方块·挖空书'], 'G3': V['G3 圆环+书'], 'G4': V['G4 圆环(顶缺口)+书'],
+  'G6': V['G6 方块·挖空书(更大)'], 'G7': V['G7 方块·书(亮色双色)'] };
+document.getElementById('locks').innerHTML = Object.entries(PICK).map(([n, inner]) => `
+  <div class="ctxlab">${n}</div>
+  <div class="top"><div class="brand"><svg class="ic" viewBox="0 0 48 48">${inner}</svg>
+    <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div></div>
+  <div class="top light"><div class="brand"><svg class="ic" viewBox="0 0 48 48">${inner}</svg>
+    <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div></div>`).join('');
+</script>
+</body></html>
