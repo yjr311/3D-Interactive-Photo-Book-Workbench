@@ -1,0 +1,12 @@
+# 本地一次性产物 —— 不进版本库。两类都有更合适的"正本或重建方式"，留在这里只会让仓库变重。
+#
+# ① 预览图的本地备份（各约 12 MB）。正本就在工作区根目录的 预览-*.png。
+.workbuddy/tmp/_gallery_bak*/
+
+# ② 第十五轮「改前对照 / 隔离实验」用的残缺产物（各约 1.1 MB）。
+#    它们 = 当前产物 + 4 处字面量回退，由下面两个已提交的脚本几秒即可重建：
+#      _mkbefore.py   全坏（CTM / 求交 / 容差 / declare 一起回退）→ _before.html
+#      _mkvariants.py 只坏一处（只去容差 / 只去求交）      → _tolon.html / _nointer.html
+.workbuddy/tmp/_before.html
+.workbuddy/tmp/_tolon.html
+.workbuddy/tmp/_nointer.html

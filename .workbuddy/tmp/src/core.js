@@ -266,6 +266,9 @@ const state={
   adj:{brightness:1,contrast:1,saturate:1,warmth:0,grain:0,vignette:0,fade:0},
   preset:'original',
   tpl:'polaroid',
+  /* 氛围音效（翻页沙沙声 / 落页 / 贴纸"啵"）。放在 state 里而不是 Sound 内部，
+     这样它和别的偏好走同一条持久化通道（见 PERSIST.flush 的 s.sound）。 */
+  sound:true,
   opts:{
     /* ⚠ 这里用占位符而不是固定文字，是这一版的关键：
        模版文字会按照片解开 —— 否则 28 页会整整齐齐地重复同一句「今日份」，
@@ -285,7 +288,11 @@ const state={
        mat:'cloth' 材料配方（见 MATSETS）。氛围只换色号的时候，书页就是"平涂"——
        用户的原话是"没有质感"，所以材料是独立于色号的一层，可单独换、也可被「换一版」带走。 */
     layout:'mat', art:DEFAULT_BOOK_ART, ratio:'3:4', num:true, spread:true, cap:'note', speed:2, coverIdx:0,
-    mat:'cloth'
+    mat:'cloth',
+    /* 双封面 / 封底寄语（送人的刚需，成本极低）。
+       默认空串 = 那两块什么都不画 —— 于是老存档（没有这两个字段）读上来
+       与之前的观感**逐像素一致**，不需要做定向迁移（硬约定 4 的答案就是"不用迁移"）。 */
+    coverNote:'', backNote:''
   }
 };
 
@@ -361,8 +368,15 @@ const PERSIST=(function(){
     s.opts=state.opts; s.book=state.book;
     s.assign={};
     (state.photos||[]).forEach(function(p){
-      s.assign[p.name]={tpl:p.tpl,picked:!!p.picked,note:p.note||'',mood:p.mood||''};
+      const a={tpl:p.tpl,picked:!!p.picked,note:p.note||'',mood:p.mood||''};
+      /* 贴纸按"有才写"存：28 张照片每张都塞一个空数组，存档会白白胖一圈。
+         它是小数组，但也没必要为"没有贴纸"这件事付存储。 */
+      if(p.stickers&&p.stickers.length) a.stickers=p.stickers;
+      s.assign[p.name]=a;
     });
+    /* 音效开关也一起记住 —— 用户关掉音效通常是因为"现在不方便出声"，
+       下次打开还是安静的比较符合预期。 */
+    s.sound=state.sound!==false;
     try{ localStorage.setItem(KEY,JSON.stringify(s)); return true; }
     catch(e){ ok=false; return false; }
   }
@@ -409,6 +423,8 @@ const PERSIST=(function(){
     });
     if(s.preset&&PRESETS[s.preset]) state.preset=s.preset;
     if(s.tpl&&TPL[s.tpl]) state.tpl=s.tpl;
+    /* 音效开关。老存档里没有这个字段 —— 保持出厂（开）。 */
+    if(typeof s.sound==='boolean') state.sound=s.sound;
     /* 氛围：只把皮肤贴回工作台外观，**不**重写 opts/book ——
        存档里的 opts/book 就是用户当时看到的真实值（可能还被他手改过），
        这里再 applySkin 一次会把它们冲掉。 */
@@ -495,6 +511,9 @@ function pushPhoto(p){
        重开一次浏览器不用重新写一遍文案。 */
     if(typeof a.note==='string') p.note=a.note;
     if(typeof a.mood==='string') p.mood=a.mood;
+    /* 贴纸：**必须过 stkClean**。存档可能是旧版本写的、也可能被人手改过，
+       不校验的话一枚不认识的贴纸会在每次出片时静默画不出东西（或抛错）。 */
+    if(a.stickers) p.stickers=stkClean(a.stickers);
     p._restored=true;
   }
   state.photos.push(p);
@@ -582,6 +601,13 @@ function postEffects(ctx,x,y,w,h){
     ctx.fillRect(x,y,w,h); ctx.restore();
   }
 }
+/* 把照片画进 (x,y,w,h) 这块矩形里。
+   ⚠ **返回值是贴纸坐标系的地基**：返回照片**实际被绘出的矩形** {dx,dy,dw,dh}。
+     cover 铺满时 dw/dh 会比 (w,h) 大（超出部分被裁掉），contain 时比它小，
+     zoom/ox/oy 还会把它平移。贴纸的 (x,y) 是相对**这个矩形**归一化的 ——
+     只有真的把这张照片画在哪量出来，贴纸才会"贴在照片上"而不是"贴在画布上"。
+     以前这里不返回值，于是 renderCanvas 只能拿整块画布当照片，贴纸在
+     「面板里的照片」和「书页上的模版成品」之间必然对不上。 */
 function drawFit(ctx,photo,x,y,w,h,ov){
   const d=prep(photo);
   const fit=state.spec.fit;
@@ -609,14 +635,59 @@ function drawFit(ctx,photo,x,y,w,h,ov){
   ctx.filter='none';
   postEffects(ctx,x,y,w,h);
   ctx.restore();
+  /* ⚠ blurfill 时返回的是**清晰那一张**的矩形，不是铺底的模糊层 ——
+     模糊层只是底色，贴纸该锚在真照片上。 */
+  return {dx:dx,dy:dy,dw:dw,dh:dh};
+}
+/* 把矩形从"调用点的**局部坐标**"换算回**画布像素坐标**。
+   ⚠ 必须做这一步：模版里常见"先 translate/rotate 再 paint"（牛皮纸就是），
+     此时 c.paint(-pw/2,-ph/2,pw,ph) 传的是局部坐标，drawFit 返回的也是局部坐标
+     （牛皮纸实测 dx=-345.6、dy=-460.8，矩形有 3/4 在画布外面）。
+     把它当画布坐标用，锚点就被 clamp 到角落 —— 症状是**贴纸只能往左上拖，
+     往右/往下拖不动**（用户报的正是这个）。做法：四个角过一遍 CTM 再取外接矩形。
+   ⚠ 取外接矩形而不是"把旋转也带出去"：旋转下矩形的**中心点不变**，
+     所以 (.5,.5) 仍然精确；四个角最多差 半宽*sin(角度)（牛皮纸 1.6° → 约 1.6%）。
+     不返回矩阵是为了不给"两套坐标系"留后门（硬约定 45）。 */
+function rectThruM(rc,m){
+  if(!rc||!m) return rc;
+  /* 没有变换就**原样返回**，不要绕一圈。绕一圈会带进浮点噪声：
+     x1-x0 与 rc.dw 在数值上等价、但不保证按位相同（dx+dx 的舍入）。
+     而 renderCanvas 选"面积最大"的那次 paint 用的是**严格大于** ——
+     噪声恰好能打破"三格面积完全相等"的平局（九宫格就是这样：9 格里
+     有 3 格按位同面积），于是贴纸锚点会莫名跳到另一格。实测踩过。 */
+  if(m.a===1&&m.b===0&&m.c===0&&m.d===1&&m.e===0&&m.f===0) return rc;
+  const px=[rc.dx,rc.dx+rc.dw,rc.dx,rc.dx+rc.dw];
+  const py=[rc.dy,rc.dy,rc.dy+rc.dh,rc.dy+rc.dh];
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(let i=0;i<4;i++){
+    const X=m.a*px[i]+m.c*py[i]+m.e, Y=m.b*px[i]+m.d*py[i]+m.f;
+    if(X<x0)x0=X; if(X>x1)x1=X; if(Y<y0)y0=Y; if(Y>y1)y1=Y;
+  }
+  return {dx:x0,dy:y0,dw:x1-x0,dh:y1-y0};
 }
 function paintPhoto(ctx,photo,x,y,w,h,r,ov){
+  /* 调用点的 CTM。save/restore 与 clip 都不改它，所以这里的值就是
+     drawFit 内部画照片时用的那一个坐标系。 */
+  const m=ctx.getTransform();
   ctx.save();
   if(r>0){ rr(ctx,x,y,w,h,r); ctx.clip(); } else { ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); }
-  drawFit(ctx,photo,x,y,w,h,ov);
+  const rect=drawFit(ctx,photo,x,y,w,h,ov);
   ctx.restore();
+  /* ⚠ 再与**画框**求交。cover 是"铺满这个框再多出来的裁掉"，所以
+     "照片看得见的部分" = 铺出来的矩形 ∩ 画框。不求交的话，溢出的那一圈也被算成照片：
+     明信片上下各 158px、宝丽来 3px —— 贴纸在这些边上会飘到照片外面，
+     而面板画的虚线还写在"照片边界"上，自相矛盾。
+     （contain 时矩形本来就小于画框，求交是恒等变换，不会误伤。） */
+  let use=rect;
+  if(rect){
+    const x0=Math.max(rect.dx,x), y0=Math.max(rect.dy,y);
+    const x1=Math.min(rect.dx+rect.dw,x+w), y1=Math.min(rect.dy+rect.dh,y+h);
+    /* 退化（框和照片不相交）时退回未求交的值，宁可偏也不要不画 */
+    if(x1-x0>1&&y1-y0>1) use={dx:x0,dy:y0,dw:x1-x0,dh:y1-y0};
+  }
+  return rectThruM(use,m);
 }
-function renderCanvas(photo,tplId,opts,longEdge){
+function renderCanvas(photo,tplId,opts,longEdge,noStick){
   const sz=targetSize(photo,longEdge);
   const c=document.createElement('canvas'); c.width=sz.w; c.height=sz.h;
   const ctx=c.getContext('2d');
@@ -625,9 +696,23 @@ function renderCanvas(photo,tplId,opts,longEdge){
   /* 'hand' 是「标题手写体」这个角色。体系里没有 web 字体，所以氛围换字体
      只能换角色到哪个字族（原味/奶油/蜜桃→手写，雾紫/夜樱/法式→衬线，薄荷→无衬线）。 */
   const handRole=skinCfg().handRole||'hand';
+  /* 模版把照片画在了哪 —— 这是**贴纸坐标系**。
+     ⚠ 取**面积最大**的那一次 paint，不是最后一次：有些模版会先铺一层底图
+       （blurfill 的模糊层就走 paint 里的同一条路），最后画的那张不一定最大。
+       面积最大的一次就是"主体照片"。
+     ⚠ 同一个模版在同一张照片上必须**只调用一次 paint**（多图模版是书页的事，
+       不是成片的事）。真调了两次，贴纸只会锚在最大那块上 —— 这是可接受的退让。
+       ⚠ 但"最大"要用**带容差**的比较：九宫格会画 9 次，其中 3 格面积按位完全相等，
+         严格 `>` 会让"谁赢"取决于浮点噪声（贴纸锚点于是会莫名跳到另一格）。
+         1e-6 px² 的容差对 960×1280 的画布没有实际意义，只是把平局钉成"先来先得"。 */
+  let pRect=null;
   const cx={
     ctx:ctx,W:W,H:H,photo:photo,o:opts||{},f:k=>FONTS[(k==='hand'?handRole:k)]||FONTS.sans,
-    paint:(x,y,w,h,r,ov)=>paintPhoto(ctx,photo,x,y,w,h,r,ov),
+    paint:(x,y,w,h,r,ov)=>{
+      const rc=paintPhoto(ctx,photo,x,y,w,h,r,ov);
+      if(rc&&(!pRect||rc.dw*rc.dh>pRect.dw*pRect.dh+1e-6)) pRect=rc;
+      return rc;
+    },
     plate:(x,y,w,h,r,color,blur,oy)=>{
       ctx.save();
       ctx.shadowColor=color||'rgba(0,0,0,.3)';
@@ -636,10 +721,31 @@ function renderCanvas(photo,tplId,opts,longEdge){
       ctx.fillStyle='#ffffff';
       rr(ctx,x,y,w,h,r||0); ctx.fill(); ctx.restore();
     },
+    /* 有些模版**不走 c.paint** —— 它们自己把照片重着色 / 重新合成之后 drawImage
+       （「双色」就是把照片过一遍 makeDuotone 再贴上去）。这类模版如果不吭声，
+       pRect 就退化成"整块画布"，贴纸于是锚在画布中心而不是照片中心
+       （双色实测：照片在 (96,128,768,844.8)，贴纸却按 (0,0,960,1280) 算）。
+       语法糖而已，语义是"照片就占这个框"，不再跑一次 fit 计算。 */
+    declare:(x,y,w,h)=>{
+      const rc=rectThruM({dx:x,dy:y,dw:w,dh:h},ctx.getTransform());
+      if(rc&&(!pRect||rc.dw*rc.dh>pRect.dw*pRect.dh+1e-6)) pRect=rc;
+      return rc;
+    },
     rr:(x,y,w,h,r)=>rr(ctx,x,y,w,h,r),
     grain:(a,comp)=>grainOver(ctx,W,H,a,comp)
   };
   t.draw(cx);
+  /* 兜底：模版一次都没画照片（纯文字模版之类的）→ 退化成"照片 = 整块画布"，
+     贴纸至少还看得见，不会整批消失。 */
+  if(!pRect) pRect={dx:0,dy:0,dw:W,dh:H};
+  /* 贴纸烧进成片：
+     · 在 t.draw 之后 —— 贴纸压在模版外壳上面（谁贴的谁在上面）；
+     · 在 finalize 之前（调用方负责）—— 白边/圆角/投影要连贴纸一起装裱；
+     · 锚在 pRect 上 —— 所以同一枚贴纸在「宝丽来」和「杂志」里都贴在照片的同一处。
+     noStick=true 时只出**底片**：面板那块预览要"底片 + 实时贴纸层"两件分开，
+     否则拖动时贴纸会跟着重渲一次整张成片。 */
+  if(!noStick) drawStickers(ctx,pRect,stickOf(photo),photo);
+  c.photoRect=pRect;
   return c;
 }
 /* 「干净照片」：只走调色管线（亮度/对比/饱和/暖度/暗角/颗粒），
@@ -649,7 +755,7 @@ function renderCanvas(photo,tplId,opts,longEdge){
      「今日份 / 2026·LUMEN」在 28 页上重复 28 遍 —— 那正是「生成的
      初始图书很丑」的最大来源。模版是「单张成片」的玩法，书本是另一回事。
    画布按照片原始比例出，版式留给 renderContent 去排。 */
-function renderPlain(photo,longEdge){
+function renderPlain(photo,longEdge,noStick){
   const d=prep(photo);
   const L=longEdge||state.spec.longEdge;
   const k=Math.min(1,L/Math.max(d.w,d.h));
@@ -657,7 +763,11 @@ function renderPlain(photo,longEdge){
   const c=document.createElement('canvas'); c.width=w; c.height=h;
   const x=c.getContext('2d');
   /* 用 paintPhoto 而不是裸 drawImage：这样缩放/平移（zoom/ox/oy）跟着这张照片走 */
-  paintPhoto(x,photo,0,0,w,h,0);
+  const rect=paintPhoto(x,photo,0,0,w,h,0);
+  /* 贴纸也要出现在「干净照片」上 —— 书页画面选了「干净照片」、或者这张照片被挑成
+     封面主图时，用户贴的贴纸要是消失了，那和"改了看不见"是同一类错误。 */
+  if(!noStick) drawStickers(x,rect,stickOf(photo),photo);
+  c.photoRect=rect;
   return c;
 }
 function finalize(art){
@@ -913,6 +1023,9 @@ duotone:{tone:'light',name:'双色',hint:'套印 · 大字号 · 海报感',
     const m=W*.1;
     const duo=makeDuotone(c.photo,W-m*2,H*.66,acc,'#141d52');
     ctx.drawImage(duo,m,H*.1);
+    /* ⚠ 必须申报：这张照片是重着色之后贴上去的，走的不是 c.paint。
+       不申报的话贴纸会锚在整块画布上（中心偏 90px，看着像"贴纸没贴在照片上"）。 */
+    c.declare(m,H*.1,W-m*2,H*.66);
     ctx.save();
     ctx.globalCompositeOperation='screen';
     ctx.fillStyle=acc; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
@@ -1039,6 +1152,30 @@ function trackedW(ctx,text,track){
   let total=0;
   for(let i=0;i<ch.length;i++) total+=ctx.measureText(ch[i]).width;
   return total+track*Math.max(0,ch.length-1);
+}
+/* 折行（封底寄语要它）。**中文没有空格**，所以只能按"量一个字、放不下就换行"来断，
+   不能按词断。量宽度必须走 trackedW 而不是 measureText —— tracked() 画的时候
+   每字之间还额外加了 track 的字距，光量 measureText 会低估，最后一行的字会顶出去。
+   调用前请先把 ctx.font 设好。 */
+function wrapText(ctx,text,maxW,maxLines,track){
+  const t=String(text==null?'':text).replace(/\s+/g,' ').trim();
+  if(!t) return [];
+  const out=[]; let cur='';
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(!cur||trackedW(ctx,cur+c,track||0)<=maxW){ cur+=c; continue; }
+    out.push(cur);
+    if(out.length>=maxLines){
+      /* 放不下又到底了：把最后一行尾部收成省略号，别让字跑到版心外面去 */
+      let last=out[maxLines-1];
+      while(last.length>1&&trackedW(ctx,last+'…',track||0)>maxW) last=last.slice(0,-1);
+      out[maxLines-1]=last+'…';
+      return out;
+    }
+    cur=c;
+  }
+  if(cur) out.push(cur);
+  return out.slice(0,maxLines);
 }
 /* =====================================================================
    材质层 —— 把「色号」变成「材料」
@@ -1371,6 +1508,295 @@ function pressTreat(x,text,cx,y,size,track,font,mode,inkColor){
   }
   x.restore();
 }
+/* ============================================================
+   贴纸 / 手写涂鸦 / 日期戳 / 票根
+   ------------------------------------------------------------
+   数据挂在**照片**上（跟着照片走，不跟着页面走）：
+       photo.stickers = [{k:'tape', x:.32, y:.14, rot:-.12, s:1, text:''}]
+   四条设计决定（先写下来，因为后面所有代码都被它们决定）：
+     1. **坐标归一化 0..1** —— 缩略图 / 胶片带预览 / 成片 / 书页四种尺寸共用一份数据。
+        存像素的话，用户换一次画幅（960×1280 → 1080×1080）贴纸就全跑偏了。
+     2. **贴纸烧进成片（art）** —— 因为"贴纸改了"必须能触发 bookStale()，
+        否则用户贴完导出，文件里根本没有贴纸（和上一轮"发布尺寸"是同一类 bug）。
+        插入点是 renderCanvas 里 `t.draw(cx)` 之后：在 finalize 之前（白边/圆角/投影
+        要连贴纸一起装裱），也在模版外壳之后（贴纸压在模版上面）。
+     3. **持久化按照片名存**（`assign[name].stickers`），与模版分配共用同一个自然键
+        —— `id` 是每次运行自增的临时值，换一次导入就对不上了。
+     4. **手写涂鸦走"预置笔迹 + 用户文字"**，不做自由画笔：自由画笔要处理压感、
+        平滑、擦除，成本翻三倍，而实际产出（歪歪扭扭的字）远不如预置笔迹好看。
+   ⚠ 绘制必须**确定性**：任何抖动都走 rng(seed)，绝不用 Math.random ——
+     否则每重出一次成片，胶带的毛边与星光的角度都在变，用户会以为坏了。
+   ============================================================ */
+const STICKERS={
+  tape:  {name:'和纸胶带'},
+  star:  {name:'小星星'},
+  heart: {name:'小爱心'},
+  spark: {name:'闪光'},
+  doodle:{name:'手写圈',  text:1, dflt:'好喜欢这天',   ph:'好喜欢这天'},
+  stamp: {name:'日期戳',  text:1, dflt:'{date}',       ph:'{date}'},
+  anniv: {name:'纪念日戳',text:1, dflt:'纪念日',       ph:'认识第 100 天'},
+  ticket:{name:'票根',    text:1, dflt:'KADA · 入场券',ph:'KADA · 入场券'}
+};
+const STK_ORDER=['tape','star','heart','spark','doodle','stamp','anniv','ticket'];
+const STK_MAX=6;            /* 单张照片的贴纸上限：再多就把照片糊住了 */
+const STK_S0=.20;           /* 基准尺寸 = 短边 × 这个数（见 stickerBase 的注释） */
+function stickerName(k){ return (STICKERS[k]||{}).name||k||''; }
+function stickOf(p){ return (p&&p.stickers)||[]; }
+/* 贴纸签名。bookStale() 靠它判断"贴纸改过没有"。
+   浮点取整到千分之一 —— 够细，同时避免 0.1+0.2 那种浮点噪声让签名无端变化。 */
+function stickerSig(p){
+  const list=stickOf(p);
+  if(!list.length) return '';
+  return list.map(function(s){
+    return [s.k,R((s.x==null?.5:s.x)*1000),R((s.y==null?.5:s.y)*1000),
+            R((s.rot||0)*1000),R((s.s==null?1:s.s)*100),String(s.text||'')].join(':');
+  }).join('|');
+}
+function stkSeed(s,i){
+  let h=2166136261;
+  const str=String((s&&s.k)||'')+'#'+(i||0);
+  for(let j=0;j<str.length;j++){ h^=str.charCodeAt(j); h=Math.imul(h,16777619); }
+  return h|0;
+}
+/* 贴纸的清洗/夹取。两个地方共用同一条规则（存档读回、面板加贴纸）——
+   分开写的话，迟早在某一侧漏掉一个夹取，于是贴纸能飘到画面外面去。 */
+function stkFix(s){
+  const n=function(v,d){ v=Number(v); return isFinite(v)?v:d; };
+  return {
+    k:s.k,
+    x:clamp(n(s.x,.5),-.25,1.25),
+    y:clamp(n(s.y,.5),-.25,1.25),
+    rot:clamp(n(s.rot,0),-3.2,3.2),
+    s:clamp(n(s.s,1),.35,3),
+    text:String(s.text==null?'':s.text).slice(0,30)
+  };
+}
+function stkClean(list){
+  if(!list||!list.length) return [];
+  return Array.prototype.slice.call(list)
+    .filter(function(s){ return s&&STICKERS[s.k]; })
+    .slice(0,STK_MAX).map(stkFix);
+}
+/* 贴纸基准尺寸取**短边**：用长边当基准的话，同一枚贴纸在方图里会突然比竖图大一截
+   （而用户"把贴纸放在这里"这个动作是跨画幅的，视觉大小必须稳）。 */
+function stickerBase(W,H){ return Math.min(W,H); }
+/* 贴纸配色：**跟着书的纸色/墨色与当下的强调色走**，不写死色号 ——
+   贴纸是"贴在这本书上"的东西，换氛围皮肤时必须跟着换，否则像外来的贴图。
+   纸色/墨色在皮肤里是一对（保证有对比），所以贴纸永远读得清。
+   ⚠ 刻意**不**按照片/模版取值：只读全局状态，面板里的贴纸小样才可能与实际内容
+     用同一套色（小样要是和真画出来的不一样，那它就不是预览，是装饰）。 */
+function stkPalette(){
+  const sk=skinCfg(), o=state.opts||{}, bk=state.book||{};
+  const acc=o.accent||sk.accent||'#e08a3c';
+  return {
+    acc:acc,
+    acc2:o.accent2||sk.accent2||acc,
+    paper:bk.paper||'#fdfaf3',
+    ink:bk.ink||'#2a2620',
+    white:'rgba(255,255,255,.9)',
+    /* 选择器里那 76×34 的小样底色。**不能用 paper** —— 和纸胶带与票根本身
+       就是"纸色半透明/纸色填充"的，铺在同色的纸底上等于没画：
+       第一枚按钮看上去是个空盒子（实测就是这样）。用一块中性中间调做底，
+       浅色的和纸与深色的墨线才同时读得出来。它只是替身背景，不参与配色。 */
+    chip:'#b9b2a6'
+  };
+}
+/* ---------- 八种贴纸的画法（都以原点为中心，S = 基准尺寸） ---------- */
+function stkTape(x,S,P,rnd){
+  const w=S*1.15,h=S*.30;
+  x.save(); x.rotate((rnd()-.5)*.07);
+  x.beginPath();
+  x.moveTo(-w,-h*.92); x.lineTo(w,-h); x.lineTo(w,h*.92); x.lineTo(-w,h); x.closePath();
+  x.save(); x.clip();
+  x.globalAlpha=.70; x.fillStyle=P.paper; x.fillRect(-w,-h,w*2,h*2);
+  /* 和纸的纤维：几条更亮的细线 + 几条更暗的，都在裁切区里，所以两端自然被切掉 */
+  x.globalAlpha=.30; x.strokeStyle=P.white; x.lineWidth=S*.016;
+  for(let i=0;i<4;i++){ const y=-h*.70+i*h*.47; x.beginPath(); x.moveTo(-w,y); x.lineTo(w,y+S*.030); x.stroke(); }
+  x.globalAlpha=.15; x.strokeStyle=P.ink; x.lineWidth=S*.010;
+  for(let i=0;i<3;i++){ const y=-h*.50+i*h*.62; x.beginPath(); x.moveTo(-w,y); x.lineTo(w,y-S*.022); x.stroke(); }
+  x.restore();
+  x.globalAlpha=.34; x.strokeStyle=P.ink; x.lineWidth=S*.012; x.stroke();
+  x.restore();
+}
+function stkStar(x,S,P){
+  const R=S*.58, r=R*.42;
+  x.beginPath();
+  for(let i=0;i<10;i++){
+    const a=-Math.PI/2+i*Math.PI/5, rr=(i%2)?r:R;
+    const px=Math.cos(a)*rr, py=Math.sin(a)*rr;
+    if(i) x.lineTo(px,py); else x.moveTo(px,py);
+  }
+  x.closePath();
+  x.fillStyle=P.acc; x.fill();
+  x.globalAlpha=.55; x.strokeStyle=P.ink; x.lineWidth=S*.045; x.stroke();
+}
+function stkHeart(x,S,P){
+  const R=S*.56;
+  x.beginPath();
+  x.moveTo(0,R*.86);
+  x.bezierCurveTo(-R*1.36,R*.02,-R*.62,-R*1.02,0,-R*.30);
+  x.bezierCurveTo(R*.62,-R*1.02,R*1.36,R*.02,0,R*.86);
+  x.closePath();
+  x.fillStyle=P.acc; x.fill();
+  x.globalAlpha=.55; x.strokeStyle=P.ink; x.lineWidth=S*.045; x.stroke();
+}
+function stkSpark(x,S,P){
+  const R=S*.62;
+  const one=function(r,dx,dy,al){
+    x.save(); x.translate(dx,dy); x.globalAlpha=al;
+    x.beginPath();
+    x.moveTo(0,-r);
+    x.quadraticCurveTo(r*.13,-r*.13,r,0);
+    x.quadraticCurveTo(r*.13,r*.13,0,r);
+    x.quadraticCurveTo(-r*.13,r*.13,-r,0);
+    x.quadraticCurveTo(-r*.13,-r*.13,0,-r);
+    x.closePath();
+    x.fillStyle=P.acc; x.fill();
+    x.restore();
+  };
+  one(R,0,0,1);
+  one(R*.42,R*.70,R*.60,.78);
+}
+function stkDoodle(x,S,P,txt){
+  txt=String(txt||'');
+  const maxW=S*1.95;
+  const size=Math.max(9,fitFont(x,txt,maxW,FONTS.hand,S*.50,S*.20,'600'));
+  x.font='600 '+R(size)+'px '+FONTS.hand;
+  /* ⚠ 空文字要单独判：`x.measureText('').width||maxW` 会取到 maxW（0 是 falsy），
+     于是"清空文字"反而画出一个**最大号**的空圈。写成 `txt?…:0` 之后，
+     空文字就是一个小小的空圈 —— 那是"圈住了什么但没写字"，合理。 */
+  const tw=txt?Math.min(maxW,x.measureText(txt).width||maxW):0;
+  const rw=tw/2+S*.22, rh=size*.94+S*.16;
+  /* 手绘感的圈：描两遍（第二遍更细、更歪），像笔来回绕了一下。
+     一遍的椭圆看着像印刷圈选，两遍才像手。 */
+  const ell=function(dr,al,lw,rot){
+    x.save(); x.rotate(rot); x.globalAlpha=al;
+    x.strokeStyle=P.ink; x.lineWidth=lw;
+    x.beginPath();
+    x.ellipse(0,0,rw+dr,rh+dr,0,-.28,Math.PI*2-.62);
+    x.stroke(); x.restore();
+  };
+  ell(0,.78,S*.035,.02);
+  ell(S*.038,.40,S*.019,-.035);
+  x.globalAlpha=.95; x.fillStyle=P.ink;
+  x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 '+R(size)+'px '+FONTS.hand;
+  x.fillText(txt,0,0);
+}
+function stkStamp(x,S,P,txt){
+  const w=S*1.55,h=S*.52,r=S*.10;
+  x.save(); x.rotate(-.035);
+  x.globalAlpha=.92; x.strokeStyle=P.acc; x.lineWidth=S*.035;
+  rr(x,-w,-h,w*2,h*2,r); x.stroke();
+  x.globalAlpha=.46; x.lineWidth=S*.018;
+  x.setLineDash([S*.075,S*.055]);
+  rr(x,-w+S*.095,-h+S*.095,w*2-S*.19,h*2-S*.19,r*.7); x.stroke();
+  x.setLineDash([]);
+  const t=String(txt||'');
+  const size=Math.max(8,fitFont(x,t,w*1.72,FONTS.mono,S*.30,S*.13,'600'));
+  x.globalAlpha=.95; x.fillStyle=P.acc;
+  x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 '+R(size)+'px '+FONTS.mono;
+  x.fillText(t,0,S*.01);
+  x.restore();
+}
+function stkAnniv(x,S,P,txt){
+  /* ⚠ 这个半径**不能**叫 R：R 是全局的取整函数（`const R=n=>Math.round(n)`，
+     见文件开头），函数体里再 `const R=S*.70` 会把它整个盖掉，
+     于是末尾那句 `R(size)` 变成"拿一个数字当函数调" → TypeError。
+     症状很隐蔽：paintStickers 被 try/catch 包着，选择器里这一枚只是**空白**，
+     不报错、不溢出；而真贴上纪念日戳时整个渲染直接抛。所以叫 Rd。 */
+  const Rd=S*.70;
+  x.save(); x.rotate(.045);
+  x.globalAlpha=.92; x.strokeStyle=P.acc; x.lineWidth=S*.035;
+  x.beginPath(); x.arc(0,0,Rd,0,Math.PI*2); x.stroke();
+  x.globalAlpha=.42; x.lineWidth=S*.014;
+  x.beginPath(); x.arc(0,0,Rd*.86,0,Math.PI*2); x.stroke();
+  x.globalAlpha=.60; x.fillStyle=P.acc;
+  x.beginPath(); x.arc(0,-Rd*.46,Rd*.075,0,Math.PI*2); x.fill();
+  const t=String(txt||'');
+  const size=Math.max(8,fitFont(x,t,Rd*1.40,FONTS.cap,S*.30,S*.13,'600'));
+  x.globalAlpha=.95; x.fillStyle=P.acc;
+  x.textAlign='center'; x.textBaseline='middle';
+  x.font='600 '+R(size)+'px '+FONTS.cap;
+  x.fillText(t,0,Rd*.18);
+  x.restore();
+}
+function stkTicket(x,S,P,txt){
+  const w=S*1.30,h=S*.56,r=S*.08,no=S*.17;
+  x.save(); x.rotate(-.055);
+  /* 票根的形状有一条**必须走对方向**的弧：两端的缺口是"向内凹"的，
+     所以 arc 的 anticlockwise 要传 true（顺时针），否则缺口会鼓到票外面去。 */
+  x.beginPath();
+  x.moveTo(-w+r,-h);
+  x.lineTo(w-r,-h);  x.arcTo(w,-h,w,-h+r,r);
+  x.lineTo(w,-no);
+  x.arc(w,0,no,-Math.PI/2,Math.PI/2,true);
+  x.lineTo(w,h-r);   x.arcTo(w,h,w-r,h,r);
+  x.lineTo(-w+r,h);  x.arcTo(-w,h,-w,h-r,r);
+  x.lineTo(-w,no);
+  x.arc(-w,0,no,Math.PI/2,-Math.PI/2,true);
+  x.lineTo(-w,-h+r); x.arcTo(-w,-h,-w+r,-h,r);
+  x.closePath();
+  x.globalAlpha=.94; x.fillStyle=P.paper; x.fill();
+  x.globalAlpha=.55; x.strokeStyle=P.ink; x.lineWidth=S*.014; x.stroke();
+  /* 撕线 */
+  x.save(); x.globalAlpha=.38; x.strokeStyle=P.ink; x.lineWidth=S*.014;
+  x.setLineDash([S*.045,S*.040]);
+  x.beginPath(); x.moveTo(w*.30,-h+no*.34); x.lineTo(w*.30,h-no*.34); x.stroke();
+  x.setLineDash([]); x.restore();
+  x.textAlign='center'; x.textBaseline='middle';
+  const t=String(txt||'');
+  const size=Math.max(8,fitFont(x,t,w*1.16,FONTS.sans,S*.26,S*.11,'700'));
+  x.globalAlpha=.95; x.fillStyle=P.ink;
+  x.font='700 '+R(size)+'px '+FONTS.sans;
+  x.fillText(t,-w*.35,0);
+  x.globalAlpha=.55; x.font=R(size*.70)+'px '+FONTS.mono;
+  x.fillText('NO.01',w*.65,0);
+  x.restore();
+}
+/* ---------- 贴纸坐标系：唯一一份，就叫「照片矩形」 ----------
+   rect = 照片被画在画布上的那块矩形 {dx,dy,dw,dh}（drawFit 量出来的）。
+     锚点 = (dx + x*dw, dy + y*dh)
+     基准尺寸 = min(dw,dh) * STK_S0
+   这一层存在的全部理由是：**贴纸是贴在照片上的，不是贴在画布上的**。
+   以前这里收的是画布的 W/H，于是同一枚贴纸在
+     · 面板预览（照片铺满画布）        → 落在照片的 (x,y)
+     · 宝丽来成片（照片缩在白色版心里）→ 落在画布的 (x,y)，也就是照片的另一处
+   两处必然对不上 —— 用户一眼就看出来了。现在两边都传各自的 rect，就永远一致。
+   ⚠ 画布尺寸**不参与**这件事：rect 里已经含了它。多传一个 W/H 只会给"两套坐标系"
+     留后门，所以这里收口的参数就只有 rect —— 连"数字当 rect 用"的兼容写法也刻意不做，
+     否则迟早有人再写一次 `drawStickers(x, W, H, ...)`，那个 bug 就原样复活。
+     想要"照片铺满整块画布"就显式写 `{dx:0,dy:0,dw:W,dh:H}`，一眼看得出是哪种情况。 */
+function drawSticker(x,rect,s,i,im){
+  const def=STICKERS[s&&s.k]; if(!def) return;
+  const rc=rect||{dx:0,dy:0,dw:1,dh:1};
+  const S=stickerBase(rc.dw,rc.dh)*STK_S0, P=stkPalette();
+  const k=clamp(s.s==null?1:s.s,.35,3);
+  const cx=rc.dx+clamp(s.x==null?.5:s.x,-.25,1.25)*rc.dw;
+  const cy=rc.dy+clamp(s.y==null?.5:s.y,-.25,1.25)*rc.dh;
+  const rnd=rng(stkSeed(s,i));
+  x.save();
+  x.translate(cx,cy); x.rotate(s.rot||0); x.scale(k,k);
+  x.lineJoin='round'; x.lineCap='round';
+  /* ⚠ 这里必须和 stkText 用同一套判定：`s.text||def.dflt` 会把**空串**也当成
+     "没设过"（空串是 falsy），于是"用户把字删光"又被默认值顶回来 ——
+     而面板上的输入框是空的，两边对不上。改文字这条链上踩过两次同一个坑。 */
+  const txt=def.text?resolveTokens(s.text==null?def.dflt:s.text,im):'';
+  if(s.k==='tape') stkTape(x,S,P,rnd);
+  else if(s.k==='star') stkStar(x,S,P);
+  else if(s.k==='heart') stkHeart(x,S,P);
+  else if(s.k==='spark') stkSpark(x,S,P);
+  else if(s.k==='doodle') stkDoodle(x,S,P,txt);
+  else if(s.k==='stamp') stkStamp(x,S,P,txt);
+  else if(s.k==='anniv') stkAnniv(x,S,P,txt);
+  else if(s.k==='ticket') stkTicket(x,S,P,txt);
+  x.restore();
+}
+function drawStickers(x,rect,list,im){
+  if(!list||!list.length) return;
+  for(let i=0;i<list.length;i++) drawSticker(x,rect,list[i],i,im);
+}
 /* 印片涂层：成片装裱到书页上时，压一道很宽的斜向柔光。
    这是"一张实体照片"和"贴上去的一张图"的差别。 */
 function plateSheen(x,x0,y0,w,h){
@@ -1458,6 +1884,17 @@ function renderCover(W,H){
   x.font=R(as)+'px '+FONTS.sans;
   x.fillStyle=ink;
   tracked(x,bk.author||'',cx,H*.858,as*.32,'center');
+  /* 封面寄语：写在主图与署名之间那块空白里（送人的书，这句话是重点）。
+     空串 = 整段跳过，所以老用户的封面逐像素不变。 */
+  if(bk.coverNote){
+    const ns=fitFont(x,bk.coverNote,cw*1.02,FONTS.cap,H*.026,H*.0135,'500');
+    x.save();
+    x.globalAlpha=.74; x.fillStyle=ink;
+    x.textAlign='center'; x.textBaseline='alphabetic';
+    x.font='500 '+R(ns)+'px '+FONTS.cap;
+    tracked(x,bk.coverNote,cx,H*.786,ns*.10,'center');
+    x.restore();
+  }
   x.save(); x.globalAlpha=.24; x.fillStyle=ink;
   x.fillRect(cx-W*.032,H*.888,W*.064,Math.max(1,W*.0011)); x.restore();
   return c;
@@ -1599,6 +2036,9 @@ function bookStale(){
     const g=state.generated[i];
     if(!g||g.photoId!==list[i].id) return true;
     if((g.tpl||'')!==(list[i].tpl||state.tpl)) return true;
+    /* 贴纸是在 generate 那一刻烧进成片的，所以它也算"成片的新鲜度"的一部分。
+       不比这一条的话：用户贴完贴纸直接导出，ZIP 里根本没有贴纸（bookStale 说没过期）。 */
+    if((g.stick||'')!==stickerSig(list[i])) return true;
   }
   return false;
 }
@@ -1888,6 +2328,53 @@ function renderContent(items,pageNo,W,H,side){
         x.restore();
       }
     }
+  } else if(bk.layout==='grid'){
+    /* 九宫格小卡页：一页 9 张，等分裁切。服务「收藏型」，也顺带覆盖小卡打印。
+       ⚠ 每一格仍然要画图注（缩到很小）—— 满版出血当初就是因为"没给图注留位置"，
+         用户写了文案在整本书里一个字都不出现。**版式换了，用户的内容不能消失。** */
+    const gap=W*.030;
+    const cellW=(colW-gap*2)/3, cellH=(H-PT-PB-gap*2)/3;
+    for(let i=0;i<9;i++){
+      const im=items[i];
+      if(!im) continue;
+      /* ⚠ 行号必须是 Math.floor(i/3)，**不能**用 R(i/3)（四舍五入）。
+         R(i/3) 在 i=2 时给 1、i=8 时给 3：九格会排成 2/3/3/1 ——
+         第 3 张跳到第二行、第 9 张被推到第四行（跑出版心，页面上看不见）。
+         实测第一版就是这样，且"9 格里有 8 格有照片"不容易一眼看出来。 */
+      const cxx=R(PL+(i%3)*(cellW+gap)), cyy=R(PT+Math.floor(i/3)*(cellH+gap));
+      const cw=R(cellW), ch=R(cellH), pad=W*.012;
+      const capTxt=capWillDraw(im)?captionOf(im):'';
+      const capH=capTxt?W*.048:0;
+      const boxW=cw-pad*2, boxH=Math.max(24,ch-pad*2-capH);
+      const src=plateOf(im);
+      /* 白卡：小卡的"卡"就是这一层白边 + 投影 */
+      x.save();
+      x.shadowColor='rgba(0,0,0,.18)'; x.shadowBlur=W*.016; x.shadowOffsetY=W*.004;
+      x.fillStyle='#fff'; rr(x,cxx,cyy,cw,ch,W*.006); x.fill();
+      x.restore();
+      if(src){
+        /* 等分裁切：整格 cover 填满。grid 是"小卡"，格子形状是固定的，
+           这里不能用 contain —— 那样每格的留白各不相同，九宫格就不齐了。 */
+        x.save();
+        rr(x,cxx+pad,cyy+pad,boxW,boxH,W*.004); x.clip();
+        const k=Math.max(boxW/src.width,boxH/src.height);
+        const dw=src.width*k, dh=src.height*k;
+        x.drawImage(src,R(cxx+pad+(boxW-dw)/2),R(cyy+pad+(boxH-dh)/2),R(dw),R(dh));
+        x.restore();
+        plateSheen(x,cxx+pad,cyy+pad,boxW,boxH);
+      }
+      if(capTxt){
+        const f=fitCap(capTxt,boxW*.98,W*.0165,FONTS.cap,.10);
+        x.save();
+        x.textAlign='center'; x.textBaseline='alphabetic';
+        x.globalAlpha=.88; x.fillStyle=soft(1);
+        x.font=R(f.size)+'px '+FONTS.cap;
+        tracked(x,f.txt,cxx+cw/2,R(cyy+ch-pad-capH*.30),f.size*.10,'center');
+        x.restore();
+      }
+      x.save(); x.globalAlpha=.10; x.strokeStyle='#000'; x.lineWidth=Math.max(1,W*.0010);
+      x.strokeRect(cxx+.5,cyy+.5,cw-1,ch-1); x.restore();
+    }
   }
   folio(x,W,H,pageNo,side,soft);
   return c;
@@ -1910,6 +2397,21 @@ function renderBack(W,H){
   x.globalAlpha=.26; x.fillStyle=soft(1);
   x.fillRect(W/2-W*.052,H*.478,W*.104,Math.max(1,W*.0012));
   x.globalAlpha=1;
+  /* 封底寄语：写在 END OF VOLUME 与条形码之间那段空白里。
+     最多三行，超了收省略号 —— 这里是书的最后一句，要让它落得住，不能顶到条形码上。 */
+  if(bk.backNote){
+    /* 字号取 W*.0234（≈20px / 880 宽）：比上面那行 "END OF VOLUME"（W*.0165）
+       大一档，但远小于书名 —— 它是送书人最后说的一句话，要读得清，不该像是在喊。
+       三行之后仍要落在条形码上方（test_batch2 里量了末行的实际 y）。 */
+    const ns=R(W*.0234), lh=ns*1.62;
+    x.save();
+    x.font=R(ns)+'px '+FONTS.cap;
+    const lines=wrapText(x,bk.backNote,W*.76,3,ns*.06);
+    x.globalAlpha=.66; x.fillStyle=bk.ink;
+    x.textAlign='center'; x.textBaseline='alphabetic';
+    lines.forEach(function(ln,i){ tracked(x,ln,W/2,H*.520+i*lh,ns*.06,'center'); });
+    x.restore();
+  }
   /* 条形码：放在一张白卡上，卡的边界让这块「印刷物」有落点 */
   const bw=W*.46, bh=H*.070, bx=(W-bw)/2, y=H*.700;
   x.save();
@@ -2043,6 +2545,252 @@ function noteForAll(){
   if(c&&String(c.p.note||'').trim()) return c.p.note;
   return state._noteLast||'';
 }
+/* ================= 贴纸面板 =================
+   和文案一样做在「选片成书」这一步：用户此刻正看着照片，贴纸是此刻最自然的事。
+   导航是**独立**的一份（state._stkIdx），不跟文案那段抢"当前是哪张" ——
+   两段共用一个索引的话，贴完一枚贴纸就被文案的"自动跳下一张"带走，很懵。 */
+function stkList(){ return state.photos.filter(function(p){ return p.picked; }); }
+function stkCur(){
+  const list=stkList();
+  if(!list.length) return null;
+  const i=clamp(state._stkIdx||0,0,list.length-1);
+  return {p:list[i], i:i, n:list.length};
+}
+/* 贴纸上的文字：**输入框里显示的就是会画上去的那串字**。
+   ⚠ 只有 null/undefined（=从没设过）才退回默认值；空串是用户**主动清空**，
+     必须真的画成空的。早先写成 `s.text==null||s.text===''` 就有个坑：
+     用户把「好喜欢这天」删光，输入框空了，画面上那串字还在 —— 标准的
+     "我改了却看不见"，而且他没有任何办法把它去掉。
+     所以新贴上去的贴纸由加贴纸那一处把 dflt **显式写进数据**（见 app.js），
+     这样"从没设过"这个状态就只出现在真实的历史数据里。 */
+function stkText(s){
+  const d=STICKERS[s.k]||{};
+  return String(s.text==null?(d.dflt||''):s.text);
+}
+/* 滑杆读数的文字。抽出来给"初始化"和"拖动中"共用 ——
+   两处各写一份的话，拖一下读数就跳回另一种格式（比如 0.20 变 0.2）。 */
+function stkValText(prop,val){
+  const dec=prop==='rot'?0:2;
+  return prop==='rot'
+    ? (Math.round(val*180/Math.PI)+'°')
+    : (+val).toFixed(dec);
+}
+function stkRange(prop,val,min,max,step,label){
+  return '<div class="field"><label class="lb">'+label+
+    '<span class="val" data-stkval="'+prop+'">'+stkValText(prop,val)+'</span></label>'+
+    '<input type="range" data-stk="'+prop+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'"></div>';
+}
+function stickerHTML(){
+  const list=stkList();
+  if(!list.length)
+    return '<p class="note">还没有勾选要入册的照片。先在左边把要进书的照片选上，再回来贴贴纸。</p>';
+  const c=stkCur(), p=c.p, arr=stickOf(p);
+  const sel=clamp(state._stkSel||0,0,Math.max(0,arr.length-1));
+  let h='';
+  /* ⚠ 这两个 id 叫 stkBack / stkFwd 而不是 stkPrev / stkNext：文案那一段
+     已经占了 notePrev / noteNext，两段长得一样、很容易顺手写成同名。
+     撞名的后果不是报错，是上面那一段的按钮忽然也不动了。 */
+  h+='<div class="row"><button class="btn sm" id="stkBack">◀ 上一张</button>'+
+     '<button class="btn sm" id="stkFwd">下一张 ▶</button></div>';
+  h+='<div class="stat"><b>'+(c.i+1)+' / '+c.n+'</b><span>'+esc(p.name)+
+     ' · '+(arr.length?('已贴 '+arr.length+' 枚'):'还没有贴纸')+'</span></div>';
+  h+=stkStageHTML();
+  h+='<div class="stks">'+STK_ORDER.map(function(k){
+    const d=STICKERS[k];
+    return '<button class="stk" data-stk-add="'+k+'" title="加到「'+esc(p.name)+'」上：'+esc(d.name)+'">'+
+      '<canvas class="ssw" width="76" height="34"></canvas>'+
+      '<span class="stx"><b>'+esc(d.name)+'</b></span></button>';
+  }).join('')+'</div>';
+  if(!arr.length){
+    h+='<p class="note">点上面任意一枚就贴到「'+esc(p.name)+'」上了，'+
+       '然后点画布上想放的位置 —— 贴纸<b>跟着这一张照片</b>走，换版式、换模版、换画幅都不会跑掉。'+
+       '改完<b>立刻</b>就在书里看得见，不用再点一次「生成成片」。</p>';
+    return h;
+  }
+  /* 这一张上已有的：一枚一个胶囊，点它选中，下面的滑杆调的就是选中的那一枚 */
+  h+='<div class="stklist">'+arr.map(function(s,i){
+    const d=STICKERS[s.k]||{};
+    const lab=d.text?resolveTokens(stkText(s),p):(d.name||'');
+    return '<button class="si'+(i===sel?' on':'')+'" data-stk-sel="'+i+'" title="选中它来调位置">'+
+      '<b>'+esc(lab||d.name||'')+'</b><span>'+esc(d.name||'')+'</span></button>';
+  }).join('')+'</div>';
+  const s=arr[sel];
+  if(s){
+    const d=STICKERS[s.k]||{};
+    h+='<div class="field"><label class="lb">正在调第 '+(sel+1)+' 枚<span class="val">'+esc(d.name||'')+'</span></label>';
+    h+=stkRange('x',s.x,0,1,.01,'左右');
+    h+=stkRange('y',s.y,0,1,.01,'上下');
+    h+=stkRange('rot',s.rot,-.6,.6,.01,'倾斜');
+    h+=stkRange('s',s.s,.5,2.4,.05,'大小');
+    h+='</div>';
+    if(d.text){
+      h+='<div class="field"><label class="lb">这枚贴纸上的字</label>'+
+         '<input type="text" data-stk-text="1" value="'+esc(stkText(s))+
+         '" placeholder="'+esc(d.ph||'')+'"></div>';
+    }
+    h+='<div class="row"><button class="btn sm" id="stkDel">删掉这一枚</button>'+
+       '<button class="btn sm" id="stkClr">清空这一张</button></div>';
+    const tot=list.reduce(function(n,q){ return n+stickOf(q).length; },0);
+    if(tot>1) h+='<button class="btn block sm" id="stkClrAll">清空全部照片的贴纸</button>';
+    h+='<p class="note">文字里可以用 <code>{name}</code> <code>{n}</code> <code>{date}</code> '+
+       '<code>{note}</code> —— 「日期戳」默认就是 <code>{date}</code>，所以它每张自动不同。'+
+       '改动会立刻反映到书页上（只重出这一张）。</p>';
+  }
+  return h;
+}
+/* ===== 贴纸画布：底图 = **这张照片的成片（含模版）** =====
+   这块画布存在的理由是"所见即所得"，而"所得"就是成片 —— 书页上印的、
+   导出 ZIP 里的，都是它。所以预览也必须画它，不能画干净照片。
+
+   ⚠ 上一版画的正是干净照片，于是同一个 (x,y) 在两处落到不同位置：
+       面板里  → 照片铺满画布，贴纸落在照片的 (x,y)
+       书页上  → 宝丽来把照片缩进白色版心，贴纸落在**画布**的 (x,y)，位置全歪
+     用户的原话是「贴纸修改的位置，在已有的照片显示那不同模版显示，对不上」。
+     修法有两半，缺一不可：**底图换成成片** + **贴纸锚在照片矩形上**（见 drawFit）。
+
+   底片缓存：底片只由「模版 / 画幅 / 调色 / 皮肤 / 模版文字」决定，与贴纸无关。
+     拖动时每帧重渲一张 1280 的成片会明显发黏，所以按签名缓存 ——
+     真正拖动的那几十帧里只做 drawImage + 画几枚贴纸。 */
+const STK_BASE={sig:'',cv:null};
+function stkBaseSig(p){
+  return [p.id,p.name,p.tpl||state.tpl,p.zoom||1,p.ox||0,p.oy||0,p.rot||0,
+          JSON.stringify(state.spec),state.skin||'',
+          JSON.stringify(state.opts),JSON.stringify(state.adj)].join('|');
+}
+function stkBase(p){
+  const sig=stkBaseSig(p);
+  if(STK_BASE.sig===sig&&STK_BASE.cv) return STK_BASE.cv;
+  const tplKey=TPL[p.tpl]?p.tpl:state.tpl;
+  /* noStick=true：底片不带贴纸，贴纸由 paintStkStage 每次实时叠上去 ——
+     这样拖动过程中贴纸是"跟手"的，不用等重渲。 */
+  const cv=renderCanvas(p,tplKey,optsFor(p),state.spec.longEdge,true);
+  STK_BASE.sig=sig; STK_BASE.cv=cv;
+  return cv;
+}
+/* 画布上那块"照片"的矩形。指针换算要用它，所以留一个取用口（测试也要用）。 */
+let STK_RECT=null;
+function stkStageRect(){ return STK_RECT; }
+/* 照片边界：一道虚线，双描（白晕 + 暗芯）—— 浅色照片上纯白看不见，
+   深色照片上纯黑看不见。用户得知道照片到哪儿为止，否则会把贴纸贴到白边里
+   还以为是"位置对了"。 */
+function stkPhotoEdge(x,rc){
+  x.save();
+  x.setLineDash([6,5]);
+  x.lineWidth=2.5; x.strokeStyle='rgba(255,255,255,.5)';
+  x.strokeRect(rc.dx+.5,rc.dy+.5,Math.max(1,rc.dw-1),Math.max(1,rc.dh-1));
+  x.lineWidth=1; x.strokeStyle='rgba(20,16,12,.4)';
+  x.strokeRect(rc.dx+.5,rc.dy+.5,Math.max(1,rc.dw-1),Math.max(1,rc.dh-1));
+  x.restore();
+}
+function stkStageHTML(){
+  const c=stkCur(); if(!c) return '';
+  /* 画布尺寸 = 成片尺寸（同一份 targetSize），所以面板像素与成片像素是 1:1，
+     拖拽换算里除了一次 rect 之外没有任何比例因子。 */
+  const sz=targetSize(c.p,state.spec.longEdge);
+  return '<div class="stkstage"><canvas id="stkStage" width="'+sz.w+'" height="'+sz.h+
+    '" title="点一下就把选中的贴纸挪到这里"></canvas>'+
+    '<p class="note">这块画布就是<b>这张照片的成片</b>（含模版），所见即所得；'+
+    '虚线是照片的边界。<br>点画布上的位置，选中的那枚贴纸就挪过去（也可以按住拖）。</p></div>';
+}
+/* 量一枚贴纸在自己的坐标系里**实际占多大**。
+   不写"每种贴纸占多大"的常量表：八种的宽高比差得远（胶带 2.3:0.6 的横条、
+   纪念日戳是个正圆），手写圈的宽度还取决于用户打的那句话有多长 ——
+   表根本写不出来，写了也是把画法抄第二遍，改一处就错一处。
+   所以这里真画一遍，取 alpha 包围盒。 */
+function stkLocalBox(s,rect,i,im){
+  const rc=rect||{dx:0,dy:0,dw:1,dh:1};
+  const S=stickerBase(rc.dw,rc.dh)*STK_S0;
+  const k=clamp(s.s==null?1:s.s,.35,3);
+  const half=Math.ceil(S*k*1.7)+6;
+  const c=document.createElement('canvas'); c.width=half*2; c.height=half*2;
+  const x=c.getContext('2d');
+  /* ⚠ 这里要"尺寸按真矩形、锚点落在小画布中心"两件事同时成立。
+     drawSticker 的锚点 = dx + x*dw，所以把矩形**整体平移**到中心即可
+     （x/y 都取 .5）：dx = 中心 − dw/2。不能只传 dw/dh 而把 dx/dy 留 0 ——
+     那样锚点会落在 (dw/2, dh/2) 上，960 宽的成片会把贴纸扔到画布外面去。 */
+  drawSticker(x,{dx:half-rc.dw/2,dy:half-rc.dh/2,dw:rc.dw,dh:rc.dh},
+    {k:s.k,x:.5,y:.5,rot:0,s:s.s,text:s.text},i,im);
+  let d; try{ d=x.getImageData(0,0,c.width,c.height).data; }catch(e){ return null; }
+  let x0=c.width,x1=-1,y0=c.height,y1=-1;
+  for(let j=0;j<c.height;j++){
+    const row=j*c.width;
+    for(let q=0;q<c.width;q++){
+      if(d[(row+q)*4+3]>8){ if(q<x0)x0=q; if(q>x1)x1=q; if(j<y0)y0=j; if(j>y1)y1=j; }
+    }
+  }
+  if(x1<0) return null;
+  /* 返回的是**相对贴纸锚点**的包围盒，和 drawSticker 的锚点语义一致 */
+  return {x0:x0-half,x1:x1+1-half,y0:y0-half,y1:y1+1-half};
+}
+function paintStkStage(){
+  const cv=$('#stkStage'); if(!cv) return;
+  const c=stkCur(); if(!c) return;
+  const p=c.p, arr=stickOf(p);
+  /* 底图必须走**真的那条管线**：同一份 renderCanvas、同一份模版、同一个画幅。
+     预览自己写一套"大概"的画法，它就证明不了任何事（这也是上一版的教训）。 */
+  const base=stkBase(p);
+  const rc=base.photoRect||{dx:0,dy:0,dw:cv.width,dh:cv.height};
+  STK_RECT=rc;
+  if(cv.width!==base.width||cv.height!==base.height){ cv.width=base.width; cv.height=base.height; }
+  const x=cv.getContext('2d');
+  /* ⚠ 改过 canvas.width/height 之后上下文状态会被重置（transform/线宽/虚线全没了），
+     所以 setTransform 必须放在赋值之后。 */
+  x.setTransform(1,0,0,1,0,0);
+  x.clearRect(0,0,cv.width,cv.height);
+  x.drawImage(base,0,0);
+  stkPhotoEdge(x,rc);
+  drawStickers(x,rc,arr,p);
+  const sel=clamp(state._stkSel||0,0,Math.max(0,arr.length-1));
+  const s=arr[sel]; if(!s) return;
+  const b=stkLocalBox(s,rc,sel,p); if(!b) return;
+  x.save();
+  x.translate(rc.dx+clamp(s.x==null?.5:s.x,-.25,1.25)*rc.dw,
+              rc.dy+clamp(s.y==null?.5:s.y,-.25,1.25)*rc.dh);
+  x.rotate(s.rot||0);
+  x.setLineDash([5,4]);
+  /* 描两遍（白 + 半黑）：浅色照片上一道白环看不见，深色照片上一道黑环看不见 */
+  const bw=b.x1-b.x0+4, bh=b.y1-b.y0+4;
+  x.lineWidth=2.4; x.strokeStyle='rgba(255,255,255,.92)';
+  x.strokeRect(b.x0-2,b.y0-2,bw,bh);
+  x.lineWidth=1.1; x.strokeStyle='rgba(20,16,12,.62)';
+  x.strokeRect(b.x0-2,b.y0-2,bw,bh);
+  x.restore();
+}
+/* 拖滑杆时只更新读数与选中环，**不重渲染整块面板** ——
+   重渲染会把 input 从 DOM 上摘掉，用户的手指（和键盘焦点）就落在空气里了。 */
+function syncStkFields(){
+  const c=stkCur(); if(!c) return;
+  const arr=stickOf(c.p);
+  const sel=clamp(state._stkSel||0,0,Math.max(0,arr.length-1));
+  const s=arr[sel]; if(!s) return;
+  $$('#panel input[data-stk]').forEach(function(inp){
+    const prop=inp.dataset.stk;
+    if(s[prop]==null) return;
+    inp.value=s[prop];
+    const out=$('#panel [data-stkval="'+prop+'"]');
+    if(out) out.textContent=stkValText(prop,s[prop]);
+  });
+}
+/* 贴纸小样。必须画**真的那一枚**（同一段 drawSticker、同一套配色），
+   只写名字的选择器等于没做 —— 用户没法预判"和纸胶带"长什么样。
+   画布只有 76×34，而贴纸的基准是短边的 20%（按真实尺寸画会小得看不清），
+   所以这里用 s≈2.6 放大：**只放大同一枚贴纸，不另写一套画法**。 */
+const STK_DEMO_ROT={tape:-.13,stamp:-.04,anniv:.05,ticket:-.07,star:.12};
+function paintStickers(){
+  const P=stkPalette();
+  $$('#panel .stk[data-stk-add]').forEach(function(b){
+    const cv=$('canvas',b); if(!cv) return;
+    const x=cv.getContext('2d');
+    x.setTransform(1,0,0,1,0,0);
+    x.clearRect(0,0,cv.width,cv.height);
+    x.fillStyle=P.chip; x.fillRect(0,0,cv.width,cv.height);
+    /* 小样里的"照片矩形"就是整块小样画布 —— 贴纸锚在它的正中（x/y=.5）。
+       显式写成 rect 而不是传两个数字：见 drawSticker 上的注释。 */
+    drawSticker(x,{dx:0,dy:0,dw:cv.width,dh:cv.height},
+      {k:b.dataset.stkAdd,x:.5,y:.5,rot:STK_DEMO_ROT[b.dataset.stkAdd]||0,s:2.6},
+      0,null);
+  });
+}
 /* ================= 一键氛围成书 =================
    一条给「表达型 / 记录型」用户的捷径：他们卡住的地方不是不会点，而是
    不愿意为 28 张照片做 28 次决策。一键成书把四件事一次做完 ——
@@ -2055,7 +2803,17 @@ function noteForAll(){
 
    ⚠ 铺模版的顺序必须和 generate() 里那个 filter 完全一致 ——
      否则"第 3 张"在成片里对不上 generated[3]，逐张改模版时会改错人。 */
-const LAYOUTS=[['full','满版出血'],['mat','居中留白'],['two','双图并置'],['sticker','贴纸手账']];
+const LAYOUTS=[['full','满版出血'],['mat','居中留白'],['two','双图并置'],['sticker','贴纸手账'],['grid','九宫格小卡']];
+/* ⚠ 「九宫格小卡」刻意**不进任何皮肤的 rec.layout / alts**（见 SKINS）：
+   一键成书是给"懒得做决策"的人用的，而 28 张照片排成九宫格只有 4 页，
+   那是接触印相表、不是照片书。九宫格留给用户在「版式」里主动挑 ——
+   这不算藏着，它就在面板上；只是不让"一键"替用户做这个决定。 */
+/* 每页排几张。成书页序 / 面板的页数估算 / 音频等处的推算必须共用这一个函数 ——
+   分开写的话，面板说"约 4 页内容"而书里排了 12 页，数字就变成骗人的了。 */
+function perPage(layout){
+  const k=layout||(state.book&&state.book.layout);
+  return k==='two'?2:(k==='grid'?9:1);
+}
 function layoutLabel(k){
   for(let i=0;i<LAYOUTS.length;i++){ if(LAYOUTS[i][0]===k) return LAYOUTS[i][1]; }
   return k||'';
@@ -2297,15 +3055,18 @@ function panel1(){
 }
 function panel2(){
   const b=state.book;
-  const per=b.layout==='two'?2:1;
+  const per=perPage(b.layout);
   const picked=state.generated.filter(function(g){ return g.picked; }).length;
   const want=state.photos.filter(function(p){ return p.picked; }).length;
   const stale=bookStale();
   let h='';
   h+='<div class="stat"><b>'+picked+'</b><span>张已收入书本 · 约 '+Math.max(1,R(picked/per))+' 页内容 · 全书 '+Math.ceil((picked/per)+2)+' 页</span></div>';
   if(stale){
+    /* 过期原因要把「发布尺寸」和「贴纸」都算上 —— 旧文案只列了素材/模版/文字/调色，
+       于是「我只改了尺寸」「我只是贴了枚胶带」的用户看到的提示完全没提自己刚做的事。 */
     h+='<p class="note">成片已过期：素材勾选（'+want+' 张 / 现有成片 '+state.generated.length+
-       ' 张）、某张照片的模版、或模版文字/调色改过了 —— 书里还是旧画面。点下面按钮重出。</p>';
+       ' 张）、某张照片的模版、模版文字/调色、<b>发布尺寸</b>、或者<b>贴纸</b>改过了 —— 书里还是旧画面。'+
+       '点下面按钮重出（导出时也会自动重出一次）。</p>';
     h+='<button class="btn block sm" id="genBtn3">按当前设置重新生成</button>';
   }
   /* 到这里用户已经看过一遍成书了。「换一版」放在最上面 ——
@@ -2330,11 +3091,18 @@ function panel2(){
      +'</summary><div class="sec-body">';
   h+=noteHTML();
   h+='</div></details>';
+  /* 贴纸紧跟在文案后面：这两件事是同一个动作的两半（配一句话 + 贴一枚贴纸） */
+  h+='<details class="sec" open><summary>贴纸 / 手写 / 戳'
+     +'<span class="hint">'+(state.photos.reduce(function(n,p){ return n+stickOf(p).length; },0)||'还没有')
+     +'</span></summary><div class="sec-body">';
+  h+=stickerHTML();
+  h+='</div></details>';
   h+='<details class="sec" open><summary>版式<span class="hint">'+b.ratio+'</span></summary><div class="sec-body">';
   h+='<div class="field"><label class="lb">书页比例</label>'+segHTML('book.ratio',
     [['3:4','3:4 标准'],['4:5','4:5'],['2:3','2:3'],['1:1','方形'],['9:16','竖长'],['A4','A4']],b.ratio)+'</div>';
-  h+='<div class="field"><label class="lb">每页排布</label>'+segHTML('book.layout',
-    [['full','满版出血'],['mat','居中留白'],['two','双图并置'],['sticker','贴纸手账']],b.layout)+'</div>';
+  /* 版式列表直接用 LAYOUTS：写死一份在这里的话，加了新版式而这里忘了加，
+     用户就永远看不到它（而 layoutLabel 认得它，于是还会显示成一个有名字的选项） */
+  h+='<div class="field"><label class="lb">每页排布</label>'+segHTML('book.layout',LAYOUTS,b.layout)+'</div>';
   h+='<div class="field"><label class="lb">书页画面</label>'+segHTML('book.art',
     [['tpl','模版成品'],['plain','干净照片']],b.art)+'</div>';
   h+='<div class="field"><label class="lb">翻页形态</label>'+segHTML('book.spread',
@@ -2350,6 +3118,10 @@ function panel2(){
   h+='<div class="field"><label class="lb">翻页手感</label>'+segHTML('book.speed',
     [[1,'利落'],[2,'标准'],[3,'舒缓']],b.speed,true)+'</div>';
   h+='<label class="toggle"><input type="checkbox" data-k="book.num" data-bool="1"'+(b.num?' checked':'')+'><span class="sw"></span>显示页码</label>';
+  /* 音效开关放在"翻页手感"下面 —— 它和手感是一件事（翻页的体感）。
+     顶栏那个 ♪ 按钮是同一个开关，两边同步（见 app.js 的 sndToggle 处理）。 */
+  h+='<label class="toggle"><input type="checkbox" data-snd="1"'+(state.sound!==false?' checked':'')+
+     '><span class="sw"></span>氛围音效（翻页 / 落页 / 贴纸）</label>';
   h+='<p class="note">'+(b.art==='tpl'
     ? '书页用的是<b>模版成品</b> —— 你为每张照片挑的模版会原样装裱进版心（四周留纸边 + 投影），28 页因此各有各的样子。模版自带题字时书页不再重复画图注。'
     : '书页用的是<b>干净照片</b>：只保留调色后的照片、按照片原始比例排，最像一本正经的摄影集。模版只体现在胶片带与单张成片里。')+'</p>';
@@ -2369,6 +3141,10 @@ function panel2(){
   h+=txtHTML('book.sub',b.sub,'副标题','副标题');
   h+=txtHTML('book.author',b.author,'署名','作者 / 署名');
   h+=txtHTML('book.spine',b.spine,'书脊文字','侧边文字（书脊）');
+  /* 双封面寄语：送人的刚需，成本极低。放在书名/署名这一组里 ——
+     "书上写什么字"就该在一起，不该散到别的段落去找。 */
+  h+=txtHTML('book.coverNote',b.coverNote,'例如：送给 2026 年的我们','封面寄语（主图下方）');
+  h+=txtHTML('book.backNote',b.backNote,'例如：愿你把每一个瞬间都留下来','封底寄语（可写两三行）');
   h+=colHTML('book.cover',b.cover,'封面底色');
   h+=colHTML('book.paper',b.paper,'内页底色');
   h+=colHTML('book.ink',b.ink,'内页墨色');
@@ -2383,8 +3159,14 @@ function panel2(){
        return '<div class="chip'+(p.id===curPreset?' on':'')+'" data-export="'+p.id+'">'+
          p.label+'</div>';
      }).join('')+'</div></div>';
+  const off=artSizeOff();
+  if(off){
+    h+='<p class="note">现有成片是 <b>'+off.have+'</b>，和上面选的尺寸（'+off.want+'）不一致。'+
+       '下面任何一个导出按钮都会<b>先按新尺寸重出一次</b>再打包，不会把旧画幅发出去。</p>';
+  }
   h+='<p class="note">选了尺寸会改<b>成片本身</b>的画幅（不是导出时套白边），所以出片后不用再裁就能直接发。'+
-     '改尺寸后要重出一次成片；书页比例是另一回事，在「版式」里单独调。</p>';
+     '改尺寸后要重出一次成片（下面三个导出按钮会<b>自动</b>替你重出）；'+
+     '书页比例是另一回事，在「版式」里单独调。</p>';
   h+='<button class="btn block sm" id="exportZip">导出全部成片（ZIP）</button>';
   h+='<button class="btn block sm" id="exportSheet">导出一张竖版分享长图</button>';
   h+='<button class="btn block sm" id="exportCurrent">下载当前成片</button>';
@@ -2397,6 +3179,10 @@ function renderPanel(){
   /* 材质小样必须在插入 DOM 之后画 —— 小 canvas 是 renderPanel 刚生成的。
      画的是真材料（同一套 tile + 同一套光照），所以用户看到的就是换上去的样子。 */
   try{ paintMats(); }catch(e){}
+  /* 贴纸小样同理：同一段 drawSticker 画的真贴纸 */
+  try{ paintStickers(); }catch(e){}
+  /* 贴纸画布：同一段 paintPhoto + drawSticker，只是画在照片比例的小画布上 */
+  try{ paintStkStage(); }catch(e){}
 }
 /* ================= 交互与业务逻辑 ================= */
 /* 模版文字的出厂值。带占位符 —— 每张成片因此有自己的一行字。
@@ -2429,6 +3215,7 @@ async function generate(){
     const fin=finalize(art);
     const plain=renderPlain(p,LE);
     out.push({id:'g'+i,photoId:p.id,art:art,canvas:fin,plain:plain,tpl:p.tpl||state.tpl,
+      stick:stickerSig(p),
       thumb:fin.toDataURL('image/jpeg',.72),
       title:mo.title||'',sub:mo.sub||'',name:p.name,picked:true});
     await tick(0);
@@ -2504,13 +3291,54 @@ function zipStore(files){
   ev.setUint32(12,cdSize,true); ev.setUint32(16,offset,true); ev.setUint16(20,0,true);
   return new Blob(parts.concat(central,[end]),{type:'application/zip'});
 }
+/* ---------- 成片的真实画幅 ----------
+   一律从画布读，不猜、不看设置。设置是"我想要多大"，画布是"实际多大"，
+   两者可能不一致（成片过期时），而导出必须对用户说**实际**的那个。 */
+function artSize(){
+  const g=state.generated&&state.generated[0];
+  return g?(R(g.canvas.width)+' × '+R(g.canvas.height)):'';
+}
+/* 当前设置会产出多大的成片（用于和实际画幅对照） */
+function wantArtSize(){
+  if(state.spec.ratio==='original') return '';  /* 逐张跟原图走，没有单一答案 */
+  const t=targetSize(null,state.spec.longEdge);
+  return t.w+' × '+t.h;
+}
+function artSizeOff(){
+  const a=artSize(), w=wantArtSize();
+  return (a&&w&&a!==w)?{have:a,want:w}:null;
+}
+/* ---------- 导出前的守门：成片必须就是「当前设置」的那一批 ----------
+   起因（用户实测反馈）：把发布尺寸改成「方图」后直接点导出，ZIP 里装的还是上一次的
+   960×1280，可文件名和 README 却按当前设置写着 1080×1080 —— 文件里外对不上，
+   用户看到的就是"改了尺寸没任何效果"。旧实现只检查 generated 是否为空，
+   从没检查它是否过期（bookStale），命名还用的是当前 spec 而不是真实画布。
+   这里不新造旁路：过期就替用户点一遍「生成成片」（硬约定 10），
+   成片本身仍可再改、可重出。 */
+async function ensureFreshArt(){
+  if(!state.generated.length){ toast('请先点击「生成成片」'); return false; }
+  if(!bookStale()) return true;
+  const was=artSize();
+  toast('成片还是 '+was+'，先按当前设置重出…');
+  await tick(24);
+  await generate();
+  if(!state.generated.length){ toast('没有成片可导出'); return false; }
+  if(bookStale()){ toast('重出后仍与当前设置不一致，请先检查素材勾选'); return false; }
+  toast('已按当前设置重出成片 · '+artSize());
+  return true;
+}
 async function exportZip(){
-  if(!state.generated.length){ toast('请先点击「生成成片」'); return; }
+  if(!await ensureFreshArt()) return;
   toast('正在打包 ZIP…');
   await tick(30);
   const fmt=state.spec.format==='png'?'png':(state.spec.format==='webp'?'webp':'jpeg');
   const ext=fmt==='jpeg'?'jpg':fmt;
   const list=state.generated;
+  /* 命名一律用**真实画布**，不用当前设置 ——
+     这样即使哪天守门失效，文件名也不会说谎（旧实现正是在这里撒了谎）。 */
+  const g0=list[0], W=R(g0.canvas.width), H=R(g0.canvas.height);
+  const pz=exportPresetOf(exportPresetNow());
+  const sizeTxt=(pz&&pz.px===W+' × '+H)?(pz.label+' '+pz.px):('自定义 '+W+' × '+H);
   const files=[];
   for(let i=0;i<list.length;i++){
     const g=list[i];
@@ -2518,17 +3346,16 @@ async function exportZip(){
     if(!blob) continue;
     const buf=new Uint8Array(await blob.arrayBuffer());
     /* 文件名带上画幅尺寸：导出多批之后在下载目录里能分清哪个是哪个 */
-    files.push({name:'kada/'+pad2(i+1)+'-'+g.canvas.width+'x'+g.canvas.height+'-'+(g.tpl||'')+'.'+ext,data:buf});
+    files.push({name:'kada/'+pad2(i+1)+'-'+R(g.canvas.width)+'x'+R(g.canvas.height)+'-'+(g.tpl||'')+'.'+ext,data:buf});
   }
-  const pz=exportPresetOf(exportPresetNow());
   files.push({name:'kada/README.txt',data:new TextEncoder().encode(
     '咔哒书 KADA · 照片书成片\n'+
-    '画幅尺寸：'+(pz?pz.label+' '+pz.px:(state.spec.longEdge+'px 长边'))+'\n'+
+    '画幅尺寸：'+sizeTxt+'\n'+
     '氛围：'+skinCfg().name+'\n'+
     '数量：'+files.length+' 张\n'+
     '生成时间：'+new Date().toLocaleString())});
-  downloadBlob(zipStore(files),'咔哒书-成片-'+(pz?pz.px.replace(/ /g,''):state.spec.longEdge)+'-'+Date.now()+'.zip');
-  toast('ZIP 已导出 · '+files.length+' 个文件');
+  downloadBlob(zipStore(files),'咔哒书-成片-'+W+'x'+H+'-'+Date.now()+'.zip');
+  toast('ZIP 已导出 · '+files.length+' 个文件 · '+sizeTxt);
 }
 function shareSheet(){
   const r=buildPages();
@@ -2599,6 +3426,7 @@ function exportSheet(){
   },'image/png');
 }
 async function exportCurrent(){
+  if(!await ensureFreshArt()) return;   /* 单张导出同样不能发旧画幅 */
   const g=state.generated.find(function(q){ return q.photoId===state.sel; })||state.generated[0];
   if(!g){ toast('请先点击「生成成片」'); return; }
   const fmt=state.spec.format==='png'?'png':(state.spec.format==='webp'?'webp':'jpeg');

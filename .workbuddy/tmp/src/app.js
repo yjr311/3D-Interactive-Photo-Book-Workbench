@@ -33,41 +33,67 @@ async function loadEmbedded(replace){
   toast('已载入 '+state.photos.length+' 张示例照片'+(back?('（其中 '+back+' 张接回了上次的模版）'):''));
 }
 
-/* ---------- 翻页音效（WebAudio 合成，无外部素材） ---------- */
+/* ---------- 氛围音效（WebAudio 合成，无外部素材） ----------
+   三声：翻页 swish（沙沙）、落页 land（纸压到桌面上那一下轻响）、
+   贴纸 pop（手账里"啵"地贴上去）。
+   ⚠ 每一段都包 try/catch：**音频是装饰，绝不许打断交互**。
+     旧版 swish 没包 —— 一旦某台机器的 AudioContext 抛错（隐私模式 / 策略限制），
+     翻页会跟着一起挂，而用户只会看到"点不动"。 */
 const Sound=(function(){
-  let ac=null, on=true;
+  let ac=null;
+  const on=function(){ return state.sound!==false; };
   function ctx(){
-    if(ac) { if(ac.state==='suspended') ac.resume(); return ac; }
+    if(ac){ if(ac.state==='suspended') ac.resume(); return ac; }
     const C=window.AudioContext||window.webkitAudioContext;
     if(!C) return null;
     try{ ac=new C(); }catch(e){ return null; }
     return ac;
   }
-  function swish(v){
-    if(!on) return;
+  /* 一段噪声，走带通/低通 + 指数包络。翻页与落页都是"纸+空气"的声音，只是频段不同。 */
+  function noise(dur,opt){
     const a=ctx(); if(!a) return;
-    const dur=.4, sr=a.sampleRate, n=Math.max(1,R(sr*dur));
+    const o=opt||{}, sr=a.sampleRate, n=Math.max(1,R(sr*dur));
     const buf=a.createBuffer(1,n,sr), d=buf.getChannelData(0);
     for(let i=0;i<n;i++){
       const t=i/n;
-      d[i]=(Math.random()*2-1)*Math.pow(1-t,2.4)*(0.3+0.7*Math.sin(Math.PI*Math.min(1,t*1.5)));
+      d[i]=(Math.random()*2-1)*Math.pow(1-t,o.decay||2.4)*(0.3+0.7*Math.sin(Math.PI*Math.min(1,t*1.5)));
     }
     const src=a.createBufferSource(); src.buffer=buf;
-    const bp=a.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=.7;
-    const f0=900+Math.random()*300;
+    const bp=a.createBiquadFilter(); bp.type=o.type||'bandpass'; bp.Q.value=o.q||.7;
+    const f0=o.f0||900;
     bp.frequency.setValueAtTime(f0,a.currentTime);
-    bp.frequency.exponentialRampToValueAtTime(f0*2.4,a.currentTime+dur*.75);
-    const g=a.createGain(), vol=.13*clamp(v||1,.25,1.4);
+    bp.frequency.exponentialRampToValueAtTime(Math.max(40,(o.f1||f0*2.4)),a.currentTime+dur*(o.sweep||.75));
+    const g=a.createGain(), vol=(o.vol||.13)*clamp(o.k||1,.25,1.4);
     g.gain.setValueAtTime(.0001,a.currentTime);
-    g.gain.exponentialRampToValueAtTime(vol,a.currentTime+.035);
+    g.gain.exponentialRampToValueAtTime(vol,a.currentTime+(o.atk||.035));
     g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);
     src.connect(bp); bp.connect(g); g.connect(a.destination);
     src.start(a.currentTime);
   }
+  /* 一个正弦短音，频率滑到 f1。贴纸"啵"用它。 */
+  function blip(f0,f1,dur,vol){
+    const a=ctx(); if(!a) return;
+    const o=a.createOscillator(), g=a.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(f0,a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(f1,a.currentTime+dur);
+    g.gain.setValueAtTime(.0001,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(vol,a.currentTime+.012);
+    g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(a.currentTime); o.stop(a.currentTime+dur+.02);
+  }
+  function swish(v){ if(!on()) return; try{ noise(.4,{f0:900+Math.random()*300,f1:(900+Math.random()*300)*2.4,vol:.13,k:v||1}); }catch(e){} }
+  /* 落页：低而短的一下。频率压到 300Hz 以下是"纸落到桌面"而不是"撕纸"。 */
+  function land(){ if(!on()) return; try{ noise(.16,{type:'lowpass',f0:420,f1:120,q:.9,decay:3.4,vol:.10,sweep:.9,atk:.012}); }catch(e){} }
+  /* 贴纸"啵"：一个上滑的短音，很短（90ms），因为手账贴纸就是一下。 */
+  function pop(){ if(!on()) return; try{ blip(560,1180,.09,.075); }catch(e){} }
   return {
-    swish:swish,
-    isOn:function(){ return on; },
-    toggle:function(){ on=!on; if(on) swish(.5); return on; }
+    swish:swish, land:land, pop:pop,
+    isOn:on,
+    setOn:function(v){ state.sound=!!v; },
+    /* 打开的那一下留个声音 —— 用户需要听见"它开了"（否则会以为按钮坏了） */
+    toggle:function(){ state.sound=!on(); if(on()) swish(.5); return state.sound; }
   };
 })();
 
@@ -172,7 +198,7 @@ function buildBookPages(){
   const ab=pageAspect();
   const PW=880, PH=Math.max(300,R(PW*ab[1]/ab[0]));
   const picked=state.generated.filter(function(g){ return g.picked; });
-  const per=state.book.layout==='two'?2:1;
+  const per=perPage();
   const pages=[];
   pages.push({kind:'cover',canvas:renderCover(PW,PH)});
   pages.push({kind:'endpaper',canvas:renderEndpaper(PW,PH)});
@@ -269,7 +295,13 @@ BookView.prototype.bind=function(){
     if(a==='prev') self.prev();
     else if(a==='next') self.next();
     else if(a==='auto') self.toggleAuto();
-    else if(a==='sound'){ const o=Sound.toggle(); b.classList.toggle('on',o); toast(o?'翻页音效已开启':'翻页音效已关闭'); }
+    else if(a==='sound'){
+      const o=Sound.toggle(); b.classList.toggle('on',o);
+      /* 面板里那个开关写着同一件事，必须跟着一起翻 ——
+         只翻一处的话，用户会以为"顶栏开着、面板里却关着"。 */
+      const cb=$('#panel input[data-snd]'); if(cb) cb.checked=o;
+      toast(o?'氛围音效已开启':'氛围音效已关闭');
+    }
     else if(a==='full') openReader();
   });
   this.thumbs.addEventListener('click',function(e){
@@ -416,6 +448,9 @@ BookView.prototype.step=function(ts){
       this.anim=null;
       this.bowBoost=0;
       this.syncUI();
+      /* 落页音：纸压到桌面上的那一下。翻页 swish 在抬手时就响了（见 up()），
+         这里是"落定"，两声一前一后才有重量感 —— 合成一声反而像卡了一下。 */
+      Sound.land();
       if(this.queue.length){
         const d=this.queue.shift();
         this.flipOne(d,{dur:this.queue.length?Math.round(flipDur()*.44):Math.round(flipDur()*.86)});
@@ -1379,6 +1414,7 @@ async function generate(){
        想让书页也走干净照片时（book.art='plain'）同样是它。 */
     const plain=renderPlain(p,LE);
     out.push({id:'g'+i,photoId:p.id,art:art,canvas:fin,plain:plain,tpl:p.tpl||state.tpl,
+      stick:stickerSig(p),   /* 这一批成片对应的贴纸，bookStale() 靠它判过期 */
       thumb:makeThumb(fin),title:mo.title||'',sub:mo.sub||'',name:p.name,picked:true});
     if(i%3===0){ busyOn('正在渲染 <b>'+(i+1)+'/'+list.length+'</b> 张成片…'); await tick(0); }
   }
@@ -1393,6 +1429,60 @@ async function generate(){
      renderBookStage 是把书本元素摘掉的（显示空状态），
      只调 scheduleBook 的话书会被"生成"出来却仍然不挂在舞台上。 */
   else { renderStage(); renderPanel(); renderDock(); scheduleBook(false); }
+}
+
+/* ---------- 贴纸改完立刻生效：只重出「这一张」 ----------
+   贴纸是**烧进成片**的，所以"改了数据"和"书里看得见"之间隔着一次渲染。
+   上一版把这一步留给了用户：改完 → 面板亮出「成片已过期」→ 用户自己点
+   「生成成片」（28 张 / 1.5 秒）。用户的原话是
+   「我修改不是动态呈现的，添加甚至修改后，需要手动点击生成照片才有，这不太好」
+   —— 这是对的：那是把内部实现的代价转嫁给了用户。
+
+   代价其实不必转嫁，因为改动只影响**这一张**。实测：28 张全量 1571ms（≈56ms/张），
+   而只重出这一张 = 一次 renderCanvas + finalize + renderPlain + 缩略图。
+   所以这里自动做掉，用户一次都不用点。
+
+   ⚠ 只 refresh，**不调 generate()**：generate 会重建整个 state.generated、
+     重置 _genSig、必要时还切步骤 —— 拿它来"改一枚贴纸"既慢又有副作用。
+   ⚠ 去抖 120ms：滑杆每挪一格、拖动每移一像素都会触发一次，不能每次都重出。
+     手感没有损失，因为面板那块画布是**同步**重画的（paintStkStage，底片有缓存），
+     手指上一点延迟都没有；这里管的是书页 —— 手停下来 120ms 后它就跟上了。 */
+function refreshStickerArt(p){
+  const g=state.generated.find(function(x){ return x.photoId===p.id; });
+  /* 还没出过成片的照片：数据已经改了，等生成时自然带上，不需要补 */
+  if(!g) return false;
+  const LE=state.spec.longEdge, mo=optsFor(p);
+  g.tpl=p.tpl||state.tpl;
+  g.art=renderCanvas(p,g.tpl,mo,LE);
+  g.canvas=finalize(g.art);
+  g.plain=renderPlain(p,LE);
+  g.thumb=makeThumb(g.canvas);
+  g.title=mo.title||''; g.sub=mo.sub||'';
+  g.stick=stickerSig(p);   /* 让 bookStale() 重新认为"这一张是新鲜的" */
+  /* 封面打分缓存存的是旧像素，作废；STK_BASE 是底片缓存，底片没变，不必动 */
+  state._coverRank=null;
+  return true;
+}
+let artTimer=null;
+function scheduleArt(p){
+  let add;
+  if(p) add=Array.isArray(p)?p:[p];
+  else { const c=stkCur(); add=c?[c.p]:[]; }
+  /* 攒成一批：可能有多张同时变（比如「清空全部照片的贴纸」） */
+  const q=scheduleArt._q||(scheduleArt._q=[]);
+  add.forEach(function(x){ if(q.indexOf(x)<0) q.push(x); });
+  if(!q.length) return;
+  clearTimeout(artTimer);
+  artTimer=setTimeout(function(){
+    const list=scheduleArt._q||[]; scheduleArt._q=null;
+    list.forEach(refreshStickerArt);
+    /* 第 2 步重排书页（约 120ms），第 1 步重画那张大预览。
+       走 scheduleBook / schedulePreview 而不是直接调 —— 它们自己带去抖，
+       连贴几枚贴纸时不会排出一串重复渲染。 */
+    if(state.step===2) scheduleBook(); else schedulePreview();
+    try{ renderDock(); }catch(e){}   /* 胶片带上那张缩略图也是成片 */
+    PERSIST.save();
+  },120);
 }
 
 /* ---------- 一键氛围成书 / 换一版 ----------
@@ -1524,11 +1614,82 @@ $('#panel').addEventListener('click',function(e){
     renderPanel();
     if(state.generated.length){ scheduleBook(false); schedulePreview(); }
     PERSIST.save();
+    /* 文案要跟着实际行为走：导出已经会自动重出，就别再让用户去找按钮
+       （旧文案"点「按当前设置重新生成」出片"会把用户支到别处去）。 */
     toast('发布尺寸 → '+p.label+' '+p.px+
-      (state.generated.length?' · 点「按当前设置重新生成」出片':''));
+      (state.generated.length?' · 导出时会先按新尺寸重出成片':''));
+    return;
+  }
+  /* ---------- 贴纸 ----------
+     贴纸是**烧进成片**的（见 renderCanvas / renderPlain），所以这里每一处改动
+     都只做三件事：改数据 → 重刷面板 → 存盘。**不**主动重出成片：
+     28 张渲染是秒级的，用户要连贴五六枚，每贴一枚等一次渲染没人受得了。
+     过期提示与"导出时自动重出"负责收尾（bookStale 里有贴纸签名）。 */
+  const add=e.target.closest('[data-stk-add]');
+  if(add){
+    const c=stkCur();
+    if(!c){ toast('先在左边勾选要入册的照片'); return; }
+    const p=c.p, k=add.dataset.stkAdd, arr=stickOf(p);
+    if(arr.length>=STK_MAX){
+      toast('一张照片最多贴 '+STK_MAX+' 枚，再多就把照片糊住了'); return;
+    }
+    /* 落点用一张固定的六宫格，**不用随机**：随机会让"再点一次同一枚贴纸"
+       落在别处，用户想对齐两枚胶带就没法复现。第 1 枚落在正中（最常用），
+       其余五枚分散在四角与上方，互不压住。 */
+    const spots=[[.50,.50],[.28,.30],[.72,.68],[.30,.74],[.74,.28],[.50,.18]];
+    const sp=spots[arr.length%spots.length];
+    /* 文字的出厂值**显式写进数据**，不留空串。留空串的话，"从没设过"和
+       "用户主动清空"就是同一个值，而 stkText 只能二选一 —— 二选一必然
+       得罪一边：要么清不干净，要么新贴的日期戳是空的。 */
+    const d=STICKERS[k]||{};
+    p.stickers=stkClean(arr.concat([{k:k,x:sp[0],y:sp[1],rot:0,s:1,text:String(d.dflt||'')}]));
+    state._stkSel=p.stickers.length-1;
+    Sound.pop();
+    renderPanel(); scheduleArt(p); PERSIST.save(); renderDock();
+    toast('贴上了「'+stickerName(k)+'」');
+    return;
+  }
+  const stksel=e.target.closest('[data-stk-sel]');
+  if(stksel){
+    state._stkSel=parseInt(stksel.dataset.stkSel,10)||0;
+    renderPanel();
     return;
   }
   const id=e.target.id;
+  if(id==='stkBack'||id==='stkFwd'){
+    const list=stkList();
+    if(!list.length) return;
+    const d=(id==='stkFwd')?1:-1;
+    state._stkIdx=(clamp(state._stkIdx||0,0,list.length-1)+d+list.length)%list.length;
+    state._stkSel=0;          /* 换了照片，上一张的"第 3 枚"对新照片没有意义 */
+    renderPanel();
+    return;
+  }
+  if(id==='stkDel'||id==='stkClr'||id==='stkClrAll'){
+    let n=0, touched=null;
+    if(id==='stkClrAll'){
+      /* 清空全部：**先记下谁身上本来有贴纸** —— 清完再找就找不到了，
+         于是那几张的成片会一直停在被清掉之前的样子（"删了还在"）。 */
+      touched=state.photos.filter(function(q){ return stickOf(q).length; });
+      touched.forEach(function(q){ n+=stickOf(q).length; q.stickers=[]; });
+    } else {
+      const c=stkCur();
+      if(!c){ return; }
+      const arr=stickOf(c.p);
+      if(id==='stkDel'){
+        const i=clamp(state._stkSel||0,0,Math.max(0,arr.length-1));
+        if(!arr.length) return;
+        arr.splice(i,1); n=1;
+        state._stkSel=clamp(i-1,0,Math.max(0,arr.length-1));
+      } else { n=arr.length; c.p.stickers=[]; state._stkSel=0; }
+      touched=[c.p];
+    }
+    if(!n){ toast('这一张还没有贴纸'); return; }
+    Sound.pop();
+    renderPanel(); scheduleArt(touched); PERSIST.save();
+    toast(id==='stkDel'?'已删掉一枚贴纸':('已清掉 '+n+' 枚贴纸'));
+    return;
+  }
   if(id==='resetAdj'){
     Object.keys(PRESETS.original.v).forEach(function(k){ state.adj[k]=PRESETS.original.v[k]; });
     state.preset='original'; renderPanel(); schedulePreview(); PERSIST.save(); toast('调色已重置');
@@ -1595,6 +1756,42 @@ $('#panel').addEventListener('input',function(e){
       scheduleBook(false); PERSIST.save(); }
     return;
   }
+  /* 贴纸滑杆同理：只改数据 + 重画那块小画布，**绝不重渲染面板** ——
+     重渲染会把正在被拖的那个 input 从 DOM 上摘掉，用户的手指还在按着，
+     滑杆却已经不存在了（表现为"拖到一半就断"）。 */
+  if(el.dataset.stk){
+    const c=stkCur(); if(!c) return;
+    const arr=stickOf(c.p);
+    const s=arr[clamp(state._stkSel||0,0,Math.max(0,arr.length-1))]; if(!s) return;
+    const prop=el.dataset.stk;
+    s[prop]=parseFloat(el.value);
+    /* 读数用同一个 stkValText —— 自己再写一遍的话，
+       一拖动读数就会从 0.20 变成 0.2（格式跟着输入事件漂移）。 */
+    const out=$('[data-stkval="'+prop+'"]',el.parentElement);
+    if(out) out.textContent=stkValText(prop,s[prop]);
+    try{ paintStkStage(); }catch(err){}      /* 跟着手指走，这才是"所见即所得" */
+    scheduleArt(c.p); PERSIST.save();
+    return;
+  }
+  if(el.dataset.stkText){
+    const c=stkCur(); if(!c) return;
+    const arr=stickOf(c.p);
+    const s=arr[clamp(state._stkSel||0,0,Math.max(0,arr.length-1))]; if(!s) return;
+    s.text=el.value;
+    /* 字多了手写圈会变宽，所以选中环要重画（stkLocalBox 是实测的，会自动跟上） */
+    try{ paintStkStage(); }catch(err){}
+    scheduleArt(c.p); PERSIST.save();
+    return;
+  }
+  /* 氛围音效开关：顶栏那颗 ♪ 是同一个开关，两边都要跟着翻 */
+  if(el.dataset.snd){
+    Sound.setOn(el.checked);
+    if(el.checked) Sound.pop();          /* 打开的那一下要有声音，否则像按坏了 */
+    const tb=$('[data-a="sound"]'); if(tb) tb.classList.toggle('on',el.checked);
+    PERSIST.save();
+    toast(el.checked?'氛围音效已开启':'氛围音效已关闭');
+    return;
+  }
   if(!path) return;
   if(el.dataset.bool){ setPath(path,el.checked); if(path.indexOf('book.')===0) scheduleBook(false); return; }
   setPath(path,el.value);
@@ -1606,6 +1803,48 @@ $('#panel').addEventListener('input',function(e){
   }
   onChange(path);
 });
+/* ---------- 贴纸画布：点/拖 = 把选中的那一枚挪到那里 ----------
+   绑在 document 上而不是画布上：renderPanel() 每次都会重建这块 canvas，
+   绑在元素上的话，第一次重渲染之后手指就点了个已经不在 DOM 里的对象。
+
+   ⚠ 坐标换算是"两次映射"，不是一次除法：
+     client 像素 →(÷ 显示尺寸 × 画布像素) 画布像素 →(− 照片矩形) 照片内归一化
+     中间那一步不能省。画布显示尺寸与像素尺寸不等（CSS 把 1280 的成片缩到 ~200px），
+     而贴纸只认"照片矩形"里的相对位置 —— 少一步就会把白边也算进去，
+     于是贴纸落点系统性地偏一块（这正是上一版"对不上"的另一半原因）。 */
+(function(){
+  let drag=false;
+  /* commit=false 时只重画那块小画布。拖动过程中每一帧都去刷书页 / 存盘
+     是没意义的：书页要重排 34 页。落指与抬手各提交一次就够。 */
+  function place(e,commit){
+    const cv=$('#stkStage'); if(!cv) return false;
+    const c=stkCur(); if(!c) return false;
+    const arr=stickOf(c.p); if(!arr.length) return false;
+    const s=arr[clamp(state._stkSel||0,0,Math.max(0,arr.length-1))]; if(!s) return false;
+    const r=cv.getBoundingClientRect(); if(r.width<2||r.height<2) return false;
+    const rc=stkStageRect()||{dx:0,dy:0,dw:cv.width,dh:cv.height};
+    /* 画布像素 */
+    const px=(e.clientX-r.left)/r.width*cv.width;
+    const py=(e.clientY-r.top)/r.height*cv.height;
+    /* 照片内归一化。照片矩形为 0 时（模版没画照片）退化成整块画布 */
+    const dw=Math.abs(rc.dw)>1e-6?rc.dw:cv.width, dh=Math.abs(rc.dh)>1e-6?rc.dh:cv.height;
+    s.x=clamp((px-rc.dx)/dw,0,1);
+    s.y=clamp((py-rc.dy)/dh,0,1);
+    try{ paintStkStage(); }catch(err){}
+    /* 滑杆与读数必须跟着挪 —— 不跟的话，画布上贴纸已经到左下角了，
+       下面那两根滑杆还停在 0.50 / 0.50，用户会以为滑杆坏了。 */
+    try{ syncStkFields(); }catch(err){}
+    if(commit!==false){ scheduleArt(c.p); PERSIST.save(); }
+    return true;
+  }
+  document.addEventListener('pointerdown',function(e){
+    if(!e.target.closest||!e.target.closest('#stkStage')) return;
+    drag=place(e,true);
+  });
+  document.addEventListener('pointermove',function(e){ if(drag) place(e,false); });
+  document.addEventListener('pointerup',function(){ if(drag){ drag=false; scheduleArt(); PERSIST.save(); } });
+  document.addEventListener('pointercancel',function(){ drag=false; });
+})();
 $('#railGrid').addEventListener('click',function(e){
   const pk=e.target.closest('[data-pick]');
   if(pk){
@@ -1962,6 +2201,12 @@ window.KADA=window.LUMEN={state:state,BV:BV,generate:generate,buildBookPages:bui
   renderDock:renderDock,TPL:TPL,PRESETS:PRESETS,
   openReader:openReader,closeReader:closeReader,flipDur:flipDur,
   renderPlain:renderPlain,artOf:artOf,coverRank:coverRank,coverPhoto:coverPhoto,
+  /* renderCanvas / finalize / makeThumb 放出来：贴纸那一轮起，"只重出这一张"
+     是一条要能被测试直接驱动的路径（改贴纸 → 不点生成 → 书页就变）。
+     不给这三个，测试只能整批 generate（1.5 秒），断言会写得很笨。 */
+  renderCanvas:renderCanvas,finalize:finalize,makeThumb:makeThumb,
+  refreshStickerArt:refreshStickerArt,scheduleArt:scheduleArt,
+  renderPlain:renderPlain,artOf:artOf,coverRank:coverRank,coverPhoto:coverPhoto,
   coverScore:coverScore,renderContent:renderContent,folio:folio,tracked:tracked,
   plateOf:plateOf,artMode:artMode,optsFor:optsFor,resolveTokens:resolveTokens,
   ordinalOf:ordOf,plateHasText:plateHasText,capWillDraw:capWillDraw,DEFAULT_OPTS:DEFAULT_OPTS,
@@ -1975,7 +2220,17 @@ window.KADA=window.LUMEN={state:state,BV:BV,generate:generate,buildBookPages:bui
   EXPORT_PRESETS:EXPORT_PRESETS,exportPresetOf:exportPresetOf,exportPresetNow:exportPresetNow,
   pageAspect:pageAspect,exportSheet:exportSheet,shareSheet:shareSheet,
   autoBook:autoBook,autoRoll:autoRoll,autoHTML:autoHTML,autoSeq:autoSeq,layoutLabel:layoutLabel,
-  LAYOUTS:LAYOUTS,doAuto:doAuto,
+  LAYOUTS:LAYOUTS,doAuto:doAuto,perPage:perPage,
+  /* 贴纸：数据层（STICKERS/stickOf/stkClean/stickerSig）与绘制层（drawSticker*）
+     都放出来 —— 测试要能在页面里**直接画一枚贴纸**并数像素，
+     否则只能靠"导出 ZIP 再解包"去验，反馈太慢。 */
+  STICKERS:STICKERS,STK_ORDER:STK_ORDER,STK_MAX:STK_MAX,stickerName:stickerName,
+  stickOf:stickOf,stkClean:stkClean,stkFix:stkFix,stickerSig:stickerSig,
+  drawSticker:drawSticker,drawStickers:drawStickers,stkPalette:stkPalette,
+  stkList:stkList,stkCur:stkCur,stkText:stkText,paintStkStage:paintStkStage,
+  /* 画布底图与"照片矩形"也放出来：坐标系是这个功能里最容易写错的一环，
+     测试要能直接读 rect、直接对比"面板画布"与"成片"上同一枚贴纸的落点。 */
+  stkBase:stkBase,stkStageRect:stkStageRect,stkStageHTML:stkStageHTML,
   MATSETS:MATSETS,MAT_ORDER:MAT_ORDER,matSpec:matSpec,matChoices:matChoices,matName:matName,
   matTile:matTile,matHTML:matHTML,paintMats:paintMats,shade:shade,
   paperGround:paperGround,boardGround:boardGround,pressTreat:pressTreat,plateSheen:plateSheen,

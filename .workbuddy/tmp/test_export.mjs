@@ -1,4 +1,5 @@
 import { launch, sleep } from 'file:///C:/Users/zz/.workbuddy/skills/verify-html-in-browser/scripts/cdp.mjs';
+import fs from 'node:fs';
 
 /* 第七轮 · 竖版导出与分享长图
    ① 预设决定的是【成片本身的画幅】，不是导出时套白边 → 出片不用再裁
@@ -204,6 +205,212 @@ const e10 = await ev(`
 chk(e10.had && /分享长图已导出/.test(e10.toast),
   'E20「导出一张竖版分享长图」按钮点得通，并给出尺寸回执', e10.toast);
 chk(e10.canvasBtn, 'E21 单张成片与 ZIP 的导出入口都还在');
+
+/* ---------- ⑥ 发布尺寸必须真的落到文件里（第十一轮修复）
+   真实反馈：「把发布尺寸改成方图，导出后好像没什么不同」。
+   查下去是：旧 exportZip 只检查成片是否为空，**不检查是否过期**，
+   于是把上一次的 960×1280 打进 ZIP，却按当前设置命名为 1080×1080 ——
+   文件里外对不上，用户看到的就是「改了尺寸没任何效果」。
+   这一段的断言打到**ZIP 里每张 JPEG 的真实像素**，不是设置值。 */
+
+const ZIP_HOOK = `
+(function(){
+  window.__blob=null;
+  var o=URL.createObjectURL.bind(URL);
+  URL.createObjectURL=function(x){ try{ if(x&&x.size>1000) window.__blob=x; }catch(e){} return o(x); };
+  HTMLAnchorElement.prototype.click=function(){ window.__clicked=(this.download||''); };
+  /* 页面内解包：扫 Local File Header + deflate-raw 解压 + 读 JPEG SOF / PNG IHDR 的真实像素 */
+  window.__readZip=async function(blob){
+    const buf=new Uint8Array(await blob.arrayBuffer());
+    const dv=new DataView(buf.buffer);
+    let p=0, out=[];
+    while(p+30<=buf.length){
+      if(dv.getUint32(p,true)!==0x04034b50) break;
+      const method=dv.getUint16(p+8,true);
+      const csize=dv.getUint32(p+18,true);
+      const nlen=dv.getUint16(p+26,true), elen=dv.getUint16(p+28,true);
+      const name=new TextDecoder().decode(buf.subarray(p+30,p+30+nlen));
+      const dataStart=p+30+nlen+elen;
+      const comp=buf.subarray(dataStart,dataStart+csize);
+      let raw=comp;
+      if(method===8){
+        const ds=new DecompressionStream('deflate-raw');
+        const w=ds.writable.getWriter(); w.write(comp); w.close();
+        raw=new Uint8Array(await new Response(ds.readable).arrayBuffer());
+      }
+      let dim='-';
+      if(/\\.jpe?g$/.test(name)){
+        for(let i=0;i<raw.length-9;i++){
+          if(raw[i]===0xFF && raw[i+1]>=0xC0 && raw[i+1]<=0xC3){
+            dim=((raw[i+7]<<8)|raw[i+8])+'x'+((raw[i+5]<<8)|raw[i+6]); break;
+          }
+        }
+      } else if(/\\.png$/.test(name)){
+        const d=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
+        dim=d.getUint32(16)+'x'+d.getUint32(20);
+      } else if(/\\.txt$/.test(name)){
+        dim=new TextDecoder().decode(raw);
+      }
+      out.push({name:name, dim:dim});
+      p=dataStart+csize;
+    }
+    return out;
+  };
+  return 1;
+})()`;
+await b.evaluate(ZIP_HOOK);
+
+/* 真实点击「尺寸 chip」→ 立刻点「导出全部成片」，中间**不手动重出成片** */
+async function zipShot(presetId) {
+  await b.evaluate(`(function(){var e=document.querySelector('.chip[data-export="${presetId}"]');
+    if(e) e.scrollIntoView({block:'center'}); return 1})()`);
+  await sleep(300);
+  let c = await b.center(`.chip[data-export="${presetId}"]`);
+  if (!c) return { __err: '找不到 chip ' + presetId };
+  await b.mouse('mousePressed', c.x, c.y, { button: 'left', clickCount: 1 });
+  await b.mouse('mouseReleased', c.x, c.y, { button: 'left', clickCount: 1 });
+  await sleep(340);
+  await b.evaluate(`(function(){ window.__blob=null; window.__clicked='';
+    var e=document.getElementById('exportZip'); if(e) e.scrollIntoView({block:'center'}); return 1})()`);
+  await sleep(300);
+  c = await b.center('#exportZip');
+  await b.mouse('mousePressed', c.x, c.y, { button: 'left', clickCount: 1 });
+  await b.mouse('mouseReleased', c.x, c.y, { button: 'left', clickCount: 1 });
+  for (let i = 0; i < 70; i++) { await sleep(150); if (await b.evaluate('!!window.__blob')) break; }
+  const raw = await b.evaluate(`(async function(){
+    if(!window.__blob) return JSON.stringify({__err:'没抓到 blob（导出可能被拦住）'});
+    var r=await window.__readZip(window.__blob);
+    return JSON.stringify({download:window.__clicked, files:r});
+  })()`);
+  return JSON.parse(raw);
+}
+
+/* 先造出「成片是旧画幅」的局面：当前成片是 3:4/1280 → 960×1280 */
+const e11 = await ev(`
+  var L=window.LUMEN, st=L.state;
+  /* 前面的用例把尺寸停在「故事全屏」了 —— 这里显式回到默认档 3:4 / 1280，
+     否则"前置"本身就不确定，后面几条比对会跟着飘。 */
+  st.spec.ratio='3:4'; st.spec.longEdge=1280;
+  st.photos.forEach(function(p,i){ p.picked=(i<3); });
+  await L.generate();
+  for(var i=0;i<150;i++){ await new Promise(function(r){setTimeout(r,120);}); if(st.generated.length===3) break; }
+  L.renderPanel(); L.setStep(0); L.setStep(2);
+  await new Promise(function(r){setTimeout(r,700);});
+  var cv=st.generated[0].canvas;
+  return JSON.stringify({canvas:cv.width+'x'+cv.height, stale:L.bookStale()});
+`);
+chk(e11.canvas === '960x1280' && e11.stale === false,
+  'E22 前置：先把成片造成 960×1280（3:4 / 1280）这一批', e11.canvas + ' stale=' + e11.stale);
+
+/* 四档预设逐档验：改完尺寸**直接导出**，ZIP 里的真实像素必须已经是新画幅 */
+const CASES = [
+  ['square', '1080x1080', '1080 × 1080'],
+  ['story', '1080x1920', '1080 × 1920'],
+  ['card', '1080x1620', '1080 × 1620'],
+  ['xhs', '1080x1440', '1080 × 1440']
+];
+for (let i = 0; i < CASES.length; i++) {
+  const [id, want, wantTxt] = CASES[i];
+  const r = await zipShot(id);
+  if (r.__err) { chk(false, 'E' + (23 + i) + ' 导出「' + id + '」', r.__err); continue; }
+  const imgs = r.files.filter(f => /\.jpe?g$/.test(f.name));
+  const bad = imgs.filter(f => f.dim !== want);
+  const readme = (r.files.find(f => /README/.test(f.name)) || {}).dim || '';
+  const sizeLine = (readme.split('\n').find(l => l.indexOf('画幅尺寸') === 0) || '');
+  chk(imgs.length === 3 && bad.length === 0 && (r.download || '').indexOf(want) >= 0 && sizeLine.indexOf(wantTxt) > 0,
+    'E' + (23 + i) + ' 改「' + id + '」后直接导出：ZIP 内真实像素已按新画幅重出',
+    imgs.map(f => f.dim).join(',') + ' | zip=' + r.download + ' | ' + sizeLine);
+}
+
+/* 面板要在「设置尺寸」的那一刻就给可见反馈，而不是等导出后才发现 */
+const e16 = await ev(`
+  var L=window.LUMEN, st=L.state;
+  /* 现有成片是多少由前面用例决定 —— 从画布读出来比对，不写死，否则断言会随用例顺序飘 */
+  var g0=st.generated[0].canvas;
+  var have=Math.round(g0.width)+' × '+Math.round(g0.height);
+  var chip=document.querySelector('.chip[data-export="story"]');
+  chip.click();
+  await new Promise(function(r){ setTimeout(r,300); });
+  var notes=[].map.call(document.querySelectorAll('#panel .note'),function(n){return n.textContent});
+  return JSON.stringify({have:have, want:'1080 × 1920',
+    hit:notes.filter(function(t){ return /不一致/.test(t); })[0]||''});
+`);
+chk(e16.hit.indexOf(e16.have) >= 0 && e16.hit.indexOf(e16.want) >= 0,
+  'E27 改了尺寸后面板当场说明「现有成片 vs 新尺寸」不一致、导出会先重出',
+  '现有 ' + e16.have + ' → 目标 ' + e16.want);
+
+/* 单张导出走同一条守门（它同样不能发旧画幅） */
+const e17 = await ev(`
+  var L=window.LUMEN, st=L.state;
+  await L.generate();
+  for(var i=0;i<150;i++){ await new Promise(function(r){setTimeout(r,120);}); if(st.generated.length===3) break; }
+  L.renderPanel(); L.setStep(0); L.setStep(2);
+  await new Promise(function(r){setTimeout(r,600);});
+  /* 再把尺寸改掉，让它过期，然后点「下载当前成片」 */
+  document.querySelector('.chip[data-export="card"]').click();
+  await new Promise(function(r){ setTimeout(r,300); });
+  window.__blob=null; window.__clicked='';
+  document.getElementById('exportCurrent').click();
+  for(var i=0;i<60;i++){ await new Promise(function(r){setTimeout(r,150);}); if(window.__blob) break; }
+  var cv=st.generated[0].canvas;
+  return JSON.stringify({name:window.__clicked, canvas:cv.width+'x'+cv.height, stale:L.bookStale()});
+`);
+chk(/1080x1620/.test(e17.name || '') && e17.canvas === '1080x1620',
+  'E28「下载当前成片」也先按新尺寸重出，文件名与真实像素都是 1080×1620',
+  e17.name + ' / ' + e17.canvas);
+
+/* ---------- 反向对照：把守门摘掉，同一条像素断言必须失败 ----------
+   否则"全绿"可能只是这条断言本来就不会红。 */
+const SRC = decodeURIComponent(FILE.replace('file:///', ''));
+const NEG = 'C:/Users/zz/WorkBuddy/2026-09-11-11-24-14/.workbuddy/tmp/_neg_pubsize.html';
+const srcHtml = fs.readFileSync(SRC, 'utf8');
+const GUARD = 'if(!await ensureFreshArt())return;';
+chk(srcHtml.split(GUARD).length - 1 === 2,
+  'E29 前置：产物里两处导出都挂着守门（ZIP + 单张）',
+  '命中 ' + (srcHtml.split(GUARD).length - 1) + ' 处');
+fs.writeFileSync(NEG, srcHtml.split(GUARD).join('if(false)return;'), 'utf8');
+
+const nb = await launch({ port: 9477, windowSize: '1400,920' });
+await nb.goto('file:///' + NEG, 2600);
+await sleep(900);
+await nb.evaluate(ZIP_HOOK);
+await nb.evaluate(`(async function(){
+  var L=window.LUMEN, st=L.state;
+  await L.loadEmbedded(true);
+  st.photos.forEach(function(p,i){ p.picked=(i<3); });
+  L.setStep(2); await L.generate();
+  for(var i=0;i<150;i++){ await new Promise(function(r){setTimeout(r,120);}); if(st.generated.length===3) break; }
+  L.renderPanel(); L.setStep(0); L.setStep(2);
+  await new Promise(function(r){setTimeout(r,700);});
+  return 1;
+})()`);
+await sleep(500);
+// 点「方图」后直接导出 —— 守门被摘掉，应该把旧的 960×1280 打在「1080×1080」名下
+await nb.evaluate(`(function(){var e=document.querySelector('.chip[data-export="square"]');
+  if(e) e.scrollIntoView({block:'center'}); return 1})()`);
+await sleep(300);
+let nc = await nb.center('.chip[data-export="square"]');
+await nb.mouse('mousePressed', nc.x, nc.y, { button: 'left', clickCount: 1 });
+await nb.mouse('mouseReleased', nc.x, nc.y, { button: 'left', clickCount: 1 });
+await sleep(340);
+await nb.evaluate(`(function(){ window.__blob=null; window.__clicked='';
+  var e=document.getElementById('exportZip'); if(e) e.scrollIntoView({block:'center'}); return 1})()`);
+await sleep(300);
+nc = await nb.center('#exportZip');
+await nb.mouse('mousePressed', nc.x, nc.y, { button: 'left', clickCount: 1 });
+await nb.mouse('mouseReleased', nc.x, nc.y, { button: 'left', clickCount: 1 });
+for (let i = 0; i < 40; i++) { await sleep(150); if (await nb.evaluate('!!window.__blob')) break; }
+const negRaw = await nb.evaluate(`(async function(){
+  if(!window.__blob) return JSON.stringify({__err:'没抓到 blob'});
+  var r=await window.__readZip(window.__blob);
+  return JSON.stringify({download:window.__clicked, files:r});
+})()`);
+await nb.close();
+const neg = JSON.parse(negRaw);
+const negImgs = (neg.files || []).filter(f => /\.jpe?g$/.test(f.name));
+chk(negImgs.length === 3 && negImgs.every(f => f.dim === '960x1280'),
+  'E29b 反向对照：摘掉守门后，同样的操作确实发出旧画幅（证明 E23~E26 有牙）',
+  negImgs.map(f => f.dim).join(',') + ' | zip=' + neg.download);
 
 const errs = await b.evaluate('JSON.stringify(window.__errs||[])');
 console.log('\n--- JS 异常: ' + (errs === '[]' ? 'none' : errs));

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>咔哒书 · LOGO 与图标方案</title>
+<style>
+:root{
+  --paper:#f5f3ef; --card:#fffefb; --ink:#1d1a15; --ink2:#6b665c; --ink3:#9c968a;
+  --line:#e3ded4; --line2:#d2cabb;
+  --accent:#f0a63c; --accent-deep:#c8791f;
+  --dk:#0b0d11; --dk2:#15181e; --dtext:#f2efe9; --dmuted:#8d8f99; --dline:rgba(255,255,255,.11);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:14px/1.65 "Microsoft YaHei UI","Microsoft YaHei","PingFang SC",-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:44px 46px 64px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:.01em;font-weight:700}
+.lede{color:var(--ink2);font-size:14.5px;margin:0 0 4px}
+.rule{height:1px;background:var(--line2);margin:34px 0 26px}
+h2{font-size:12px;letter-spacing:.22em;color:var(--ink3);font-weight:700;margin:0 0 16px;text-transform:uppercase}
+h3{font-size:14px;margin:0 0 10px;font-weight:700}
+p{margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 26px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.06em;padding:2px 9px;border-radius:999px;
+  background:rgba(240,166,60,.16);color:#8f5a08;font-weight:600;margin-left:8px;vertical-align:2px}
+
+/* ---------- 顶栏实况 ---------- */
+.top{height:54px;display:flex;align-items:center;gap:16px;padding:0 18px;border-radius:12px;
+  border:1px solid var(--dline);margin-bottom:10px;
+  background:linear-gradient(180deg,rgba(255,255,255,.035),transparent),var(--dk);
+  position:relative;overflow:hidden}
+.brand{display:flex;align-items:center;gap:9px;flex:none;user-select:none}
+.brand .ic{width:29px;height:29px;display:block;flex:none;color:var(--accent);
+  filter:drop-shadow(0 5px 14px rgba(240,166,60,.34))}
+.brand .tx b{display:block;font-size:14.5px;letter-spacing:.06em;font-weight:600;line-height:1.15;color:var(--dtext)}
+.brand .tx i{display:block;font-style:normal;font-size:9px;letter-spacing:.34em;color:var(--dmuted);margin-top:-1px}
+.steps{display:flex;gap:2px;margin-left:8px;flex:1}
+.steps s{text-decoration:none;font-size:12.5px;color:var(--dmuted);padding:6px 12px;border-radius:999px;white-space:nowrap}
+.steps s.on{color:var(--dtext);background:rgba(255,255,255,.06);border:1px solid var(--dline)}
+.top.light{background:#f7f5f1;border-color:#e2ded6}
+.top.light .brand .tx b{color:#221d15} .top.light .brand .tx i{color:#8a8478}
+.top.light .steps s{color:#8a8478} .top.light .steps s.on{color:#221d15;background:rgba(0,0,0,.05);border-color:#e2ded6}
+.top.light .brand .ic{filter:drop-shadow(0 5px 14px rgba(200,121,31,.26))}
+.ctx{font-size:12px;color:var(--ink2);margin:0 0 7px}
+.ctx b{color:var(--ink);font-weight:600}
+
+/* ---------- 尺寸标尺 ---------- */
+.ruler{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.ruler figure{margin:0;text-align:center}
+.ruler svg{display:block;margin:0 auto 6px;color:var(--accent)}
+.ruler figcaption{font-size:10.5px;color:var(--ink3);letter-spacing:.04em}
+.ruler figcaption b{display:block;color:var(--ink2);font-size:11.5px;font-weight:600}
+
+/* ---------- 标签页实况 ---------- */
+.tabs{display:inline-flex;align-items:flex-end;gap:3px;background:#d9d5cc;border-radius:9px 9px 0 0;padding:7px 7px 0}
+.tab{display:flex;align-items:center;gap:6px;background:#fff;border-radius:8px 8px 0 0;
+  padding:7px 13px 8px;font-size:11.5px;color:#3a352d;box-shadow:0 -1px 3px rgba(0,0,0,.05)}
+.tab.dim{background:#c9c5bb;color:#6b665c}
+.tab svg{width:14px;height:14px;flex:none;color:var(--accent)}
+.tabbar{height:26px;background:#fff;border-radius:0 8px 8px 8px;box-shadow:0 -2px 6px rgba(0,0,0,.06)}
+
+/* ---------- 几何标注 ---------- */
+.geo{display:flex;gap:30px;align-items:center;flex-wrap:wrap}
+.geo svg{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.14em;color:var(--ink3);font-weight:700;text-transform:uppercase}
+td code{background:rgba(0,0,0,.05);padding:1px 6px;border-radius:5px;font-size:12px;
+  font-family:ui-monospace,Consolas,monospace}
+.sw{display:flex;gap:14px;flex-wrap:wrap}
+.sw div{text-align:center;font-size:10.5px;color:var(--ink3)}
+.sw i{display:grid;place-items:center;width:56px;height:56px;border-radius:14px;margin-bottom:6px}
+.note{background:#fdf7ea;border:1px solid #f0dfba;border-radius:12px;padding:16px 18px;font-size:13.5px;color:#5c4a22}
+.note b{color:#8f5a08}
+ul{margin:0 0 12px;padding-left:20px} li{margin-bottom:6px}
+.kv{font-size:13px} .kv b{display:inline-block;min-width:86px;color:var(--ink3);font-weight:600}
+</style></head>
+<body><div class="wrap">
+
+<h1>咔哒书 <span style="color:var(--ink3);font-weight:400;font-size:20px">/ KADA</span></h1>
+<p class="lede">图标与 logo 方案 —— 保留原来的「圆角方块 + 琥珀金」，把里面的字换成一个真正的图形。</p>
+<p class="lede" style="color:var(--ink3);font-size:13px">图形：一本摊开的书，从方块里「挖」出来（挖空＝透明，自动适配深底/浅底/任意皮肤色）</p>
+
+<div class="rule"></div>
+
+<h2>一、主标 · 放进顶栏看实况</h2>
+<div class="card">
+  <p class="ctx"><b>深色（当前默认主题）</b></p>
+  <div class="top"><div class="brand">
+      <svg class="ic" viewBox="0 0 48 48" id="ic1"></svg>
+      <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div>
+  </div>
+  <p class="ctx" style="margin-top:14px"><b>浅色主题</b></p>
+  <div class="top light"><div class="brand">
+      <svg class="ic" viewBox="0 0 48 48" id="ic2"></svg>
+      <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div>
+  </div>
+  <p class="ctx" style="margin-top:14px"><b>换氛围皮肤</b>　强调色跟着皮肤走，图标一起变（下面 4 套）</p>
+  <div id="skins"></div>
+</div>
+
+<div class="rule"></div>
+
+<h2>二、图形标志 · 多尺寸</h2>
+<div class="card">
+  <div class="ruler" id="ruler"></div>
+  <p style="margin:20px 0 0;font-size:12.5px;color:var(--ink2)">
+    <b style="color:var(--ink)">最小可用尺寸 16px</b> —— 到 20px 以下，中缝那条缝会细到看不见，但「方块里有本白书」这个识别点仍然成立。</p>
+</div>
+
+<div class="grid2" style="margin-top:18px">
+  <div class="card">
+    <h3>浏览器标签页 / 收藏夹</h3>
+    <div class="tabs">
+      <div class="tab dim">相册 - 照片</div>
+      <div class="tab"><svg viewBox="0 0 48 48" id="ic3"></svg>咔哒书</div>
+      <div class="tab dim">+</div>
+    </div>
+    <div class="tabbar"></div>
+    <p style="margin:16px 0 0;font-size:12.5px;color:var(--ink2)">
+      favicon 用同一份矢量（内嵌 data-URI，不引外部文件）。</p>
+  </div>
+  <div class="card">
+    <h3>底色适配 / 单色</h3>
+    <div class="sw" id="swrow"></div>
+    <p style="margin:16px 0 0;font-size:12.5px;color:var(--ink2)">
+      书那一块是<b>挖空的</b>，所以它永远等于「背后是什么色」—— 深底上就是深书、浅底上就是白书，
+      同一个文件、不用出两版。</p>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<h2>三、构造</h2>
+<div class="card geo">
+  <svg width="230" height="230" viewBox="-6 -6 60 60" width="264" height="264" id="geo"></svg>
+  <div style="flex:1;min-width:320px">
+    <table>
+      <tr><th>部件</th><th>值（48 网格）</th><th>说明</th></tr>
+      <tr><td>外框</td><td><code>41.6 × 41.6</code>　圆角 <code>12.9</code></td><td>圆角/边长 ≈ 0.31，接近系统级 App 图标的圆润度；沿用原 logo 的方块形状</td></tr>
+      <tr><td>书 · 尺寸</td><td><code>31.0 × 20.3</code></td><td>占外框 74%，两侧各留约 5.3</td></tr>
+      <tr><td>书 · 页高</td><td><code>9.6</code>（外）/ <code>8.4</code>（内）</td><td>外缘略高于中缝侧，做出「摊开」的下沉</td></tr>
+      <tr><td>中缝</td><td><code>2.1</code>（两侧各 1.05）</td><td>缝合上时整本成为一本书</td></tr>
+      <tr><td>页外缘</td><td>外鼓 <code>1.1</code></td><td>不做成直棱 —— 一点点外鼓，纸才有肉感</td></tr>
+      <tr><td>安全边</td><td>四周 <code>3.2</code></td><td>≥16px 下仍有半个像素的余量，不糊边</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<h2>四、备选方向（都做出来了，可以直接换）</h2>
+<div class="grid3" id="alts"></div>
+
+<div class="rule"></div>
+
+<h2>五、字标</h2>
+<div class="card">
+  <div class="grid2">
+    <div>
+      <h3 style="margin-bottom:14px">A · 咔哒书 + KADA<span class="tag">推荐</span></h3>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:16px">
+        <svg width="42" height="42" viewBox="0 0 48 48" style="color:var(--accent)" id="ic4"></svg>
+        <div><b style="display:block;font-size:21px;letter-spacing:.06em;font-weight:600">咔哒书</b>
+          <i style="display:block;font-style:normal;font-size:10.5px;letter-spacing:.42em;color:var(--ink3);margin-top:-2px">KADA</i></div>
+      </div>
+      <p style="font-size:13px;color:var(--ink2);margin:0">
+        和现在的结构一样（中文名 + 一行宽字距拉丁），改动最小。<b>KADA</b> 是读音，短、好排、字距打开之后像厂牌。</p>
+    </div>
+    <div>
+      <h3 style="margin-bottom:14px">B · 咔哒书 + CLICK BOOK</h3>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:16px">
+        <svg width="42" height="42" viewBox="0 0 48 48" style="color:var(--accent)" id="ic5"></svg>
+        <div><b style="display:block;font-size:21px;letter-spacing:.06em;font-weight:600">咔哒书</b>
+          <i style="display:block;font-style:normal;font-size:9px;letter-spacing:.2em;color:var(--ink3);margin-top:0">CLICK BOOK</i></div>
+      </div>
+      <p style="font-size:13px;color:var(--ink2);margin:0">
+        <b>咔哒 = click</b>，快门那一下也是合上书那一下。含义更直白，但第二行会长一点，字距要收窄。</p>
+    </div>
+  </div>
+</div>
+
+<div class="rule"></div>
+
+<h2>六、改名要动的地方<span style="color:#2f7d4f;letter-spacing:0;font-weight:600;font-size:11px;margin-left:10px">已实施（构建 + 290 项回归全绿）</span></h2>
+<div class="card">
+  <table>
+    <tr><th>位置</th><th>现在</th><th>改成</th></tr>
+    <tr><td>顶栏品牌名 / 网页标题</td><td>光匣 LUMEN</td><td>咔哒书 KADA</td></tr>
+    <tr><td>书本封面默认书名 / 书脊</td><td>光匣 · LUMEN · 2026</td><td>咔哒书 · KADA · 2026</td></tr>
+    <tr><td>版权页 / 页眉小字</td><td>LUMEN STUDIO · LUMEN PRESS</td><td>KADA STUDIO · KADA PRESS</td></tr>
+    <tr><td>沉浸阅读标题</td><td>光匣 · 沉浸阅读</td><td>咔哒书 · 沉浸阅读</td></tr>
+    <tr><td>导出文件名 / 长图页脚 / 压缩包内说明</td><td>光匣-成片-…</td><td>咔哒书-成片-…</td></tr>
+    <tr><td>图标</td><td>琥珀方块里一个「匣」字</td><td>琥珀方块里挖空的一本书</td></tr>
+  </table>
+  <div class="note" style="margin-top:18px">
+    <b>上面这些已经改完并重建了</b>（产物 `咔哒书-3D互动照片书.html`）。<br>
+    <b>两件故意不动的事：</b><br>
+    ① <b>本机存档的 key 保持 <code>lumen.prefs.v1</code> 不变</b> —— 它不对用户显示，改掉会让已经做过书的人<b>丢掉存档</b>。<br>
+    ② 代码里的内部命名（<code>window.LUMEN</code> 等）也保留，只改用户看得见的文字 —— 否则整套回归测试都要跟着改，换来的收益是零。<br>
+    <span style="color:#7a6534">另外：老存档里书名/署名/书脊如果还是「光匣 / LUMEN STUDIO / LUMEN · 2026」这个旧默认值，会做一次定向迁移换成新的 —— 只动"原样等于旧默认值"的字段，用户自己改过的书名不会被覆盖（这条也进了回归）。</span>
+  </div>
+</div>
+
+<script>
+/* ===== 图形：48 网格，圆角方 + 挖空的一本摊开的书 =====
+   ⚠ 缩放必须绕「书的中心」：写成 (cx+v)*s 会把中心 24 也乘一遍，
+     等于绕原点缩放 —— 书会整体偏到右下角。 */
+function book(cx, cy, s, o = {}) {
+  const g = o.gap ?? 1.05, W = 13.7, T = o.top ?? 9.6, B = o.bot ?? 8.4;
+  const dip = o.dip ?? 4.2, bulge = o.bulge ?? 1.1;
+  const sx = v => +(cx + v * s).toFixed(2);
+  const sy = v => +(cy + v * s).toFixed(2);
+  const side = (sg) =>
+    `M${sx(-sg * g)} ${sy(B)}`
+    + `C${sx(-sg * W * .30)} ${sy(B - dip * .55)} ${sx(-sg * W * .70)} ${sy(B - dip)} ${sx(-sg * W)} ${sy(B - dip)}`
+    + `C${sx(-sg * (W + bulge))} ${sy(B - dip - 3)} ${sx(-sg * (W + bulge))} ${sy(-T + 3)} ${sx(-sg * W)} ${sy(-T)}`
+    + `C${sx(-sg * W * .70)} ${sy(-T)} ${sx(-sg * W * .30)} ${sy(-T + dip * .5)} ${sx(-sg * g)} ${sy(-T + dip * .5)}Z`;
+  return side(-1) + side(1);
+}
+const sq = (x, y, w, h, r) => `M${x + r} ${y} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r}`
+  + ` v${h - 2 * r} a${r} ${r} 0 0 1 ${-r} ${r} h${-(w - 2 * r)}`
+  + ` a${r} ${r} 0 0 1 ${-r} ${-r} v${-(h - 2 * r)} a${r} ${r} 0 0 1 ${r} ${-r} Z`;
+const BOX = sq(3.2, 3.2, 41.6, 41.6, 12.9);
+const BOOK = book(24, 24.5, 1.13);
+const KO = (box, bk) => `<path fill="currentColor" fill-rule="evenodd" d="${box}${bk}"/>`;
+const MARK = `<g>${KO(BOX, BOOK)}</g>`;
+const SHEEN = `<path fill="url(#sheen)" fill-rule="evenodd" d="${BOX}${BOOK}"/>`;
+const DEFS = `<defs><linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+  <stop offset=".52" stop-color="#fff" stop-opacity="0"/>
+  <stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient></defs>`;
+
+/* 已有 id 的图标塞进图形 */
+['ic1', 'ic2', 'ic3', 'ic4', 'ic5'].forEach(id => {
+  document.getElementById(id).innerHTML = DEFS + MARK + SHEEN;
+});
+
+/* 尺寸标尺 */
+document.getElementById('ruler').innerHTML =
+  [[160,'App 图标','160'],[96,'大','96'],[64,'中','64'],[48,'列表','48'],
+   [32,'标签页','32'],[29,'顶栏','29'],[24,'小','24'],[16,'最小','16']]
+  .map(([p, t, l]) => `<figure><svg width="${p}" height="${p}" viewBox="0 0 48 48">${DEFS}${MARK}${SHEEN}</svg>
+    <figcaption><b>${t}</b>${l}px</figcaption></figure>`).join('');
+
+/* 皮肤行 */
+const SKINS = [['原味','#f0a63c'],['蜜桃气泡','#f08a9b'],['雾紫梦境','#a98ce0'],
+  ['薄荷苏打','#5ec9b4'],['夜樱','#e58fb4'],['法式午后','#c9a06a']];
+document.getElementById('skins').innerHTML = SKINS.map(([n, c]) => `
+  <div class="top" style="--accent:${c}">
+    <div class="brand"><svg class="ic" viewBox="0 0 48 48" style="color:${c};filter:drop-shadow(0 5px 14px ${c}55)">${DEFS}${MARK}${SHEEN}</svg>
+      <div class="tx"><b>咔哒书</b><i>KADA</i></div></div>
+    <div class="steps"><s>1 导入与规格</s><s class="on">2 模版美化</s><s>3 选片成书</s></div>
+    <div style="font-size:11px;color:var(--dmuted);flex:none">${n}</div>
+  </div>`).join('');
+
+/* 底色适配 / 单色 */
+const mkSvg = (color) => `<svg viewBox="0 0 48 48" width="38" height="38" style="color:${color};display:block">${KO(BOX, BOOK)}</svg>`;
+document.getElementById('swrow').innerHTML = [
+  ['#0b0d11', mkSvg('var(--accent)'), false, '深底 · 书＝底色'],
+  ['#ffffff', mkSvg('var(--accent)'), true, '浅底 · 书＝白'],
+  ['#ffffff', mkSvg('#1d1a15'), true, '单色黑'],
+  ['#1d1a15', mkSvg('#ffffff'), false, '单色白'],
+].map(([bg, m, bd, cap]) =>
+  `<div><i style="background:${bg};${bd ? 'border:1px solid var(--line);' : ''}">${m}</i>${cap}</div>`).join('');
+
+/* 构造图：尺寸线画在外侧，不压图形 */
+document.getElementById('geo').innerHTML = `
+  <g opacity=".18" stroke="#8a8478" stroke-width=".35" fill="none">
+    ${[0,6,12,18,24,30,36,42,48].map(v=>`<line x1="${v}" y1="-6" x2="${v}" y2="54"/><line x1="-6" y1="${v}" x2="54" y2="${v}"/>`).join('')}
+    <circle cx="24" cy="24" r="20.8"/>
+  </g>
+  <g><rect x="3.2" y="3.2" width="41.6" height="41.6" rx="12.9" fill="none"
+      stroke="#c9a35e" stroke-width=".4" stroke-dasharray="2 2"/></g>
+  <g style="color:var(--accent)">
+    <path fill="currentColor" fill-rule="evenodd" d="${BOX}${BOOK}"/></g>
+  <g stroke="#9c968a" stroke-width=".35" fill="none">
+    <path d="M3.2 47.2v2.2M44.8 47.2v2.2M3.2 48.3h41.6"/>
+    <path d="M8.52 8.8v2.2M39.48 8.8v2.2M8.52 9.9h30.96"/>
+    <path d="M46.3 13.65h2.1M46.3 33.99h2.1M47.35 13.65v20.34"/>
+    <path d="M6.3 6.3 12.6 1.2"/>
+  </g>
+  <g font-family="Microsoft YaHei" font-size="3.2" fill="#8a8478" text-anchor="middle">
+    <text x="24" y="53.8">41.6</text>
+    <text x="24" y="7.4">31.0</text>
+    <text x="52.2" y="24" transform="rotate(90 52.2 24)">20.3</text>
+    <text x="14" y="2.8" text-anchor="start">R12.9</text>
+  </g>`;
+
+/* 备选：圆环+书 / 方块+深色书 / 圆形挖空书 */
+const ALT = {
+  '主方案 · 方块挖空书': `<svg width="88" height="88" viewBox="0 0 48 48" style="color:var(--accent)">${KO(BOX,BOOK)}${SHEEN}</svg>`,
+  '备选 1 · 圆环 + 书': `<svg width="88" height="88" viewBox="0 0 48 48" style="color:var(--accent)">
+    <circle cx="24" cy="24" r="20.8" fill="none" stroke="currentColor" stroke-width="2.7"/>
+    <path fill="currentColor" d="${book(24,24.4,1.16,{bulge:0})}"/></svg>`,
+  '备选 2 · 方块 + 深色书': `<svg width="88" height="88" viewBox="0 0 48 48" style="color:var(--accent)">
+    <path fill="currentColor" d="${BOX}"/><path fill="#1a1206" opacity=".82" d="${book(24,24.5,1.13)}"/></svg>`,
+};
+document.getElementById('alts').innerHTML = Object.entries(ALT).map(([n, s], i) => `
+  <div class="card" style="text-align:center;padding:20px 16px">
+    <div style="display:flex;justify-content:center;margin-bottom:12px">${s}</div>
+    <div style="font-size:13px;font-weight:600">${n}</div>
+    <div style="font-size:12px;color:var(--ink2);margin-top:6px">${
+      i===0 ? '16px 下仍清楚；挖空自动适配深浅底'
+            : i===1 ? '更秀气，但 16px 时环和书会挤在一起'
+                    : '对比更强，浅底上更好看；深底上书的「挖空感」没了'}</div>
+  </div>`).join('');
+</script>
+</div></body></html>

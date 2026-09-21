@@ -427,6 +427,107 @@ chk(o14.bt === '我的宝宝相册' && o14.ba === '妈妈' && o14.bs === '一本
   'B39b 用户自己起的书名/署名/书脊不被改名迁移覆盖', JSON.stringify(o14));
 
 
+/* ---------- ⑬ 顶栏图标：必须是「手绘小书」，而且真的画出来了 ----------
+   图标是"换了但没人验"的典型：元素还在、尺寸还对，肉眼却可能已经退回旧版。
+   所以这里不看"元素在不在"，而是把 SVG 序列化后画到 canvas 上数像素 ——
+   判据（有深棕描边 + 有暖色填充）对**旧版实心方块**天然不成立，
+   等于自带反向对照。 */
+const g1 = JSON.parse(await b.evaluate(`(function(){
+  var e=document.querySelector('.brand .logo');
+  if(!e) return JSON.stringify({__err:'没有 .brand .logo'});
+  var r=e.getBoundingClientRect();
+  var d=null, p=[].map.call(e.querySelectorAll('path'),function(x){return x.getAttribute('d')||''});
+  var g=e.querySelector('linearGradient');
+  return JSON.stringify({
+    box:Math.round(r.width)+'x'+Math.round(r.height),
+    paths:p.length, all:p.join('|'),
+    stops:g?[].map.call(g.querySelectorAll('stop'),function(s){return s.getAttribute('stop-color')}).join(','):'-',
+    shadow:getComputedStyle(e).filter
+  });
+})()`));
+chk(g1.box === '29x29', 'B40 顶栏图标是 29×29（顶栏规格，没被放大或压扁）', g1.box);
+chk(/43\.31 12\.07/.test(g1.all) && !/16\.1 3\.2/.test(g1.all),
+  'B41 顶栏图标是「手绘小书」这套几何，旧的 evenodd 方块路径已不存在',
+  g1.paths + ' 条路径');
+chk(/^#eec9a4,#d7a578$/.test(g1.stops),
+  'B42 图标自带暖棕填充（上浅下深），不跟强调色走 —— 换皮肤时它是一枚"贴纸"', g1.stops);
+
+/* 像素取证：把元素序列化到 canvas，数"确实有墨" */
+const g2 = JSON.parse(await b.evaluate(`(async function(){
+  var e=document.querySelector('.brand .logo');
+  var s=new XMLSerializer().serializeToString(e);
+  var img=new Image();
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(s)));
+  await img.decode();
+  var N=58, c=document.createElement('canvas'); c.width=c.height=N;
+  var x=c.getContext('2d'); x.drawImage(img,0,0,N,N);
+  var d=x.getImageData(0,0,N,N).data;
+  function count(id){
+    var cc=document.createElement('canvas'); cc.width=cc.height=N;
+    var xx=cc.getContext('2d'); xx.drawImage(id,0,0,N,N);
+    var dd=xx.getImageData(0,0,N,N).data;
+    var ink=0, paper=0, warmInk=0, warmPaper=0, opaque=0;
+    for(var i=0;i<dd.length;i+=4){
+      var a=dd[i+3]; if(a<40) continue;
+      opaque++;
+      var r=dd[i],g=dd[i+1],bb=dd[i+2], lum=(r+g+bb)/3;
+      if(lum<120){ ink++; if(r>g&&g>=bb&&r<130) warmInk++; }
+      if(lum>160){ paper++; if(r>g&&g>bb) warmPaper++; }
+    }
+    return {opaque:opaque, ink:ink, paper:paper, warmInk:warmInk, warmPaper:warmPaper};
+  }
+  var out=count(img);
+  /* 反向对照：把旧的「实心琥珀方块」用同一个计数器跑一遍 ——
+     判据（有深棕描边 + 有暖色填充）对旧版必须数不出东西，否则这条断言没有牙。 */
+  var OLD='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">'
+    +'<path fill="#f0a63c" fill-rule="evenodd" d="M16.1 3.2 h15.8 a12.9 12.9 0 0 1 12.9 12.9 '
+    +'v15.8 a12.9 12.9 0 0 1 -12.9 12.9 h-15.8 a12.9 12.9 0 0 1 -12.9 -12.9 v-15.8 '
+    +'a12.9 12.9 0 0 1 12.9 -12.9 ZM25.19 33.99C28.64 31.38 34.84 29.25 39.48 29.25"/></svg>';
+  var oi=new Image();
+  oi.src='data:image/svg+xml;base64,'+btoa(OLD);
+  await oi.decode();
+  var old=count(oi);
+  return JSON.stringify({opaque:out.opaque, ink:out.ink, paper:out.paper,
+    warmInk:out.warmInk, warmPaper:out.warmPaper, oldInk:old.ink, oldPaper:old.paper});
+})()`));
+chk(g2.ink > 60 && g2.warmInk > 60 && g2.oldInk === 0,
+  'B43 图标真的画出了深暖棕描边（不是"元素在、墨没有"）',
+  '描边像素 ' + g2.ink + '（暖 ' + g2.warmInk + '）· 反向对照：旧实心方块 ' + g2.oldInk);
+chk(g2.paper > 120 && g2.warmPaper > 120 && g2.oldPaper < 120,
+  'B44 图标真的画出了暖色填充（书页），不是空心线框 —— 判据对旧版不成立，有牙',
+  '填充像素 ' + g2.paper + '（暖 ' + g2.warmPaper + '）· 反向对照：旧实心方块 ' + g2.oldPaper);
+
+/* favicon 必须与顶栏是同一份几何（各改各的迟早会分叉） */
+const g3 = JSON.parse(await b.evaluate(`(async function(){
+  var l=document.querySelector('link[rel="icon"]');
+  if(!l||l.href.indexOf('data:image/svg+xml;base64,')!==0) return JSON.stringify({uri:'-'});
+  var b64=l.href.split(',')[1];
+  var svg=decodeURIComponent(escape(atob(b64)));
+  /* 它是一份【独立 SVG 文档】：id 引错 / xmlns 漏了都会静默渲染成空白或全黑，
+     字符串检查看不出来 —— 必须真的光栅化一次，数 16px 下画出了多少墨。 */
+  var img=new Image();
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
+  await img.decode();
+  var N=16, c=document.createElement('canvas'); c.width=c.height=N;
+  var x=c.getContext('2d'); x.drawImage(img,0,0,N,N);
+  var d=x.getImageData(0,0,N,N).data, ink=0, paper=0;
+  for(var i=0;i<d.length;i+=4){
+    if(d[i+3]<40) continue;
+    var lum=(d[i]+d[i+1]+d[i+2])/3;
+    if(lum<120) ink++; else if(lum>160) paper++;
+  }
+  return JSON.stringify({uri:'data-uri', len:svg.length,
+    hasOpen:/43\\.31 12\\.07/.test(svg), hasOld:/16\\.1 3\\.2/.test(svg),
+    hasXmlns:/xmlns=/.test(svg), stops:(svg.match(/#eec9a4|#d7a578/g)||[]).length,
+    ink16:ink, paper16:paper});
+})()`));
+chk(g3.uri === 'data-uri' && g3.hasOpen && !g3.hasOld && g3.hasXmlns && g3.stops === 2,
+  'B45 favicon 与顶栏用同一份手绘几何（内嵌 data-URI，仍是单文件离线）',
+  'svg ' + g3.len + ' 字符 · 渐变端点 ' + g3.stops + ' 个');
+chk(g3.ink16 > 0 && g3.paper16 > 0,
+  'B46 favicon 作为独立 SVG 真的能光栅化（16px 下有描边也有填充，不是空白/全黑）',
+  '16px 下 描边 ' + g3.ink16 + ' px · 填充 ' + g3.paper16 + ' px');
+
 const errs = await b.evaluate('JSON.stringify(window.__errs||[])');
 console.log('\n--- JS 异常: ' + (errs === '[]' ? 'none' : errs));
 console.log('--- 失败项: ' + fail + ' / ' + (pass + fail));
