@@ -317,6 +317,13 @@ CSS 只去注释与行首缩进（**行内空白一律不动**，别动 `calc()`
 
 ## 环境
 
+- **仓库**：`origin` = `git@github.com:yjr311/3D-Interactive-Photo-Book-Workbench.git`，分支 `main`；
+  提交风格是短版本号（`v1.0 / v1 / v1.1 / v1.1 up / v1.2`）。
+  `.workbuddy/tmp/` **整个是跟踪的**（646 个文件，含各种 `_bak_*` / `_old*` / 取证图）——
+  推之前不要自作主张大扫除。第十五轮只加了两条 `.gitignore`：
+  `tmp/_gallery_bak*/`（预览图的本地备份，正本在工作区根目录）和
+  `tmp/_before.html` / `_tolon.html` / `_nointer.html`（可由 `_mkbefore.py` / `_mkvariants.py` 重建的残缺产物）。
+
 - Python（有 PIL）只装在系统 3.10：`C:/Users/zz/AppData/Local/Programs/Python/Python310/python.exe`
 - Node 用托管版：`C:/Users/zz/.workbuddy/binaries/node/versions/22.22.2-2/node.exe`，
   跑 CDP 脚本时 `NODE_PATH=C:/Users/zz/.workbuddy/binaries/node/workspace/node_modules`
